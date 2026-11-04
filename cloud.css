@@ -1,0 +1,1 @@
+[hidden]{display:none!important}#cloudStatus{max-width:230px;text-align:right;font-size:.75rem}#cloudDecisions{padding:16px;background:var(--surface-2);border-radius:12px;margin:15px 0}#cloudControls{margin:16px 0}@media(max-width:580px){#cloudStatus{max-width:140px;font-size:.65rem}.header-actions{gap:4px}}
