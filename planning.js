@@ -43,17 +43,25 @@ window.syncPlanningSavings = function(state) {
   });
   return changed;
 };
-window.cleanupTestDrafts = function(state) {
-  let removed=0;
-  for(const key of ['2099-11:ЗП','2099-12:ЗП']){
-    const plan=state.planningDrafts?.[key];if(!plan)continue;
-    const known=/^(Тест з телефона|Тест з ноутбука|Чернетка телефону|Чернетка ноутбука(?: — збереження після оновлення)?|Нова стаття)$/;
-    if(Number(plan.income||0)===0&&Number(plan.reserve||0)===0&&Array.isArray(plan.rows)&&plan.rows.every(r=>known.test(String(r.name).trim())&&Number(r.planned||0)===0&&Number(r.actual||0)===0&&!r.note&&!r.payer)){
-      delete state.planningDrafts[key];removed++;
+window.cleanupTestData = function(state, draftsOnly=false) {
+  const rules={
+    '2099-09:ЗП':{names:/^Тимчасова перевірка(?: — змінено)?$/,plans:[0,10,20],facts:[0,2],notes:['','Перевірка редагування']},
+    '2099-10:ЗП':{names:/^(Мобільна перевірка|Телефон 17(?: [—-] змінено)?)$/,plans:[0,10,20,42],facts:[0],notes:['']},
+    '2099-11:ЗП':{names:/^(Чернетка телефону|Чернетка ноутбука(?: — збереження після оновлення)?|Нова стаття)$/,plans:[0],facts:[0],notes:['']},
+    '2099-12:ЗП':{names:/^(Тест з телефона|Тест з ноутбука|Нова стаття)$/,plans:[0],facts:[0],notes:['']}
+  };
+  const removed={plans:0,drafts:0,total:0};
+  for(const collection of draftsOnly?['planningDrafts']:['planning','planningDrafts']){
+    for(const [key,rule] of Object.entries(rules)){
+      const plan=state[collection]?.[key];if(!plan)continue;
+      if(Number(plan.income||0)!==0||Number(plan.reserve||0)!==0||!Array.isArray(plan.rows))continue;
+      if(!plan.rows.every(r=>rule.names.test(String(r.name).trim())&&rule.plans.includes(Number(r.planned||0))&&rule.facts.includes(Number(r.actual||0))&&rule.notes.includes(r.note||'')&&!r.payer))continue;
+      delete state[collection][key];removed[collection==='planning'?'plans':'drafts']++;removed.total++;
     }
   }
   return removed;
 };
+window.cleanupTestDrafts=state=>window.cleanupTestData(state,true).drafts;
 window.capturePlanningDraft = function(state, host=document.getElementById('planningContent')) {
   if(!host)return;
   const month=host.querySelector('#planningMonth')?.value,tab=host.querySelector('#planningTab')?.value;
