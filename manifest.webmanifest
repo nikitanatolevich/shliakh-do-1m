@@ -1,0 +1,12 @@
+{
+  "name": "Шлях до 1 000 000 ₴",
+  "short_name": "Шлях до 1М",
+  "description": "Приватний локальний фінансовий трекер",
+  "lang": "uk",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3f6f1",
+  "theme_color": "#0a3029",
+  "icons": [{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}
