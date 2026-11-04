@@ -123,9 +123,10 @@
   }
 
   function render() {
+    if (window.syncPlanningSavings(state)) save();
     document.documentElement.dataset.theme = state.meta.theme || 'light';
     renderDashboard(); renderMoney(); renderFunds(); renderMonthly(); renderBusiness(); renderPlan();
-    window.renderPlanning(state, save);
+    window.renderPlanning(state, () => { window.syncPlanningSavings(state); save(); render(); });
   }
 
   function renderDashboard() {
@@ -181,6 +182,7 @@
       ['Назва', 'Кошик', 'Сума', 'Статус', ''],
       state.assets.map(item => [esc(item.name), esc(BUCKETS[item.bucket]?.label || item.bucket), money(item.amount), item.verified ? '✓ підтверджено' : '⚠ не підтверджено', actions('asset', item.id)])
     );
+    if (state.assets.some(item => item.id === 'planning-savings')) $('#assetsTable').innerHTML += '<p class="fine-print">Заощадження з планування — сума внесків, а не банківська звірка. Не включайте ті самі гроші в інший актив повторно.</p><button class="secondary small" id="verifyPlanningSavings">Підтвердити залишок заощаджень</button>';
     $('#debtsTable').innerHTML = state.debts.length ? table(
       ['Назва', 'Сума', 'Статус', ''],
       state.debts.map(item => [esc(item.name), money(item.amount), item.verified ? '✓ підтверджено' : '⚠ не підтверджено', actions('debt', item.id)])
@@ -310,6 +312,7 @@
   };
 
   function openEditor(type, id = null) {
+    if (type === 'asset' && id === 'planning-savings') { toast('Змініть суму внеску у вкладці «Планування». Підтвердити залишок можна кнопкою під списком активів.'); return; }
     const schema = schemas[type];
     if (!schema) return;
     const existing = id ? state[schema.collection].find(item => item.id === id) : null;
@@ -348,6 +351,7 @@
   }
 
   function deleteItem(type, id) {
+    if (type === 'asset' && id === 'planning-savings') { toast('Видаліть або змініть відповідні внески у «Плануванні».'); return; }
     const schema = schemas[type]; if (!schema) return;
     if (!confirm('Видалити цей запис?')) return;
     state[schema.collection] = state[schema.collection].filter(item => item.id !== id);
@@ -398,6 +402,7 @@
   }
 
   document.addEventListener('click', event => {
+    if (event.target.id === 'verifyPlanningSavings') { const asset = state.assets.find(item => item.id === 'planning-savings'); if (asset) { asset.verified = true; save(); render(); toast('Залишок підтверджено'); } }
     const open = event.target.closest('[data-open]'); if (open) openEditor(open.dataset.open);
     const view = event.target.closest('[data-view], [data-view-link]'); if (view) setView(view.dataset.view || view.dataset.viewLink);
     const edit = event.target.closest('[data-edit]'); if (edit) openEditor(edit.dataset.edit, edit.dataset.id);
@@ -425,7 +430,7 @@
   $('#themeToggle').addEventListener('click', () => { state.meta.theme = state.meta.theme === 'dark' ? 'light' : 'dark'; save(); render(); });
   window.addEventListener('resize', () => { clearTimeout(window.__chartTimer); window.__chartTimer = setTimeout(() => { drawNetChart(); drawBusinessChart(); }, 150); });
 
-  const initialView = location.hash.slice(1); setView($(`#view-${initialView}`) ? initialView : 'dashboard');
+  const initialView = location.hash.slice(1); setView($(`#view-${initialView}`) ? initialView : 'planning');
   render();
   if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('./sw.js').catch(error => console.warn('Service worker недоступний', error));
 })();
