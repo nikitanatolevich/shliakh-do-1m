@@ -441,8 +441,9 @@
   window.financeApp = {
     read: () => JSON.parse(JSON.stringify(state)),
     checkpoint: () => { const latest=localStorage.getItem(STORAGE_KEY)?load():JSON.parse(JSON.stringify(state));window.capturePlanningDraft(latest);localStorage.setItem(STORAGE_KEY,JSON.stringify(latest)); },
-    apply: data => {
+    apply: (data, {discardDraftKeys=[]}={}) => {
       const drafts=state.planningDrafts || {}, theme=state.meta.theme;
+      discardDraftKeys.forEach(key=>delete drafts[key]);
       state={...defaults(),...data,planningDrafts:drafts,meta:{updatedAt:new Date().toISOString(),theme}};
       localStorage.setItem(STORAGE_KEY,JSON.stringify(state));render();
     }
