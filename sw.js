@@ -1,5 +1,5 @@
-const CACHE='shliakh-1m-v8';
-const ASSETS=['./','./index.html','./styles.css','./planning.css?v=8','./cloud.css?v=8','./planning.js?v=8','./app.js?v=8','./cloud.js?v=8','./manifest.webmanifest','./icon.svg'];
+const CACHE='shliakh-1m-v9';
+const ASSETS=['./','./index.html','./styles.css','./planning.css?v=9','./cloud.css?v=9','./planning.js?v=9','./app.js?v=9','./cloud.js?v=9','./manifest.webmanifest','./icon.svg'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',event=>{
