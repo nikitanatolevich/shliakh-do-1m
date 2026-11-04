@@ -55,8 +55,12 @@
   }
   async function ensureSession() {
     if(!session)throw new Error('Потрібно увійти');
-    if(session.expires_at>Date.now()/1000+60)return;
-    if(!refreshPromise) refreshPromise=api('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:{refresh_token:session.refresh_token},auth:false}).then(persistSession).finally(()=>{refreshPromise=null;});
+    const refresh=async()=>{
+      try{const latest=JSON.parse(localStorage.getItem(SESSION));if(latest?.refresh_token)session=latest;}catch{}
+      if(session.expires_at>Date.now()/1000+60)return;
+      const data=await api('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:{refresh_token:session.refresh_token},auth:false});persistSession(data);
+    };
+    if(!refreshPromise)refreshPromise=(navigator.locks?.request?navigator.locks.request('shliakh:session-refresh',refresh):refresh()).finally(()=>{refreshPromise=null;});
     await refreshPromise;
   }
   async function remote(){const rows=await api('/rest/v1/finance_snapshots?select=payload,revision,updated_at');return rows[0]||null;}
@@ -71,7 +75,7 @@
   }
   async function connect() {
     user=await api('/auth/v1/user');
-    login.hidden=true;controls.hidden=false;document.getElementById('cloudAccount').textContent=user.email;
+    login.hidden=true;document.getElementById('cloudLinkLogin').hidden=true;controls.hidden=false;document.getElementById('cloudAccount').textContent=user.email;
     try{base=JSON.parse(localStorage.getItem(metaKey()));}catch{base=null;}
     if(base?.hash){try{base.hash=fingerprint(JSON.parse(base.hash));}catch{base=null;}}
     const row=await remote();
@@ -119,6 +123,17 @@
     try{const data=await api('/auth/v1/verify',{method:'POST',auth:false,body:{email:email.value.trim(),token:token.value.trim(),type:'email'}});persistSession(data);token.value='';await connect();}
     catch(error){say('Не вдалося увійти: '+error.message);}
   };
+  document.getElementById('cloudVerifyLink').onclick=async()=>{
+    const field=document.getElementById('cloudLoginLink');
+    try{
+      const link=new window.URL(field.value.trim());
+      if(link.origin!==URL||link.pathname!=='/auth/v1/verify')throw new Error('Потрібне оригінальне посилання входу з листа Supabase');
+      const hash=link.searchParams.get('token')||link.searchParams.get('token_hash');
+      if(!hash||hash.length<20||hash.length>500)throw new Error('Посилання не містить одноразового токена');
+      const data=await api('/auth/v1/verify',{method:'POST',auth:false,body:{token_hash:hash,type:'email'}});
+      field.value='';persistSession(data);await connect();
+    }catch(error){field.value='';say('Не вдалося увійти: '+error.message);}
+  };
   document.getElementById('cloudUpload').onclick=async()=>{
     if(busy)return;busy=true;
     try{
@@ -136,9 +151,9 @@
   document.getElementById('cloudSync').onclick=()=>sync();
   document.getElementById('cloudLogout').onclick=async()=>{
     stopped=true;clearTimeout(timer);
-    try{if(session)await api('/auth/v1/logout',{method:'POST'});}catch{}
+    try{if(session)await api('/auth/v1/logout?scope=local',{method:'POST'});}catch{}
     session=null;user=null;base=null;choice=false;localStorage.removeItem(SESSION);
-    controls.hidden=true;decisions.hidden=true;login.hidden=false;say('Вихід виконано • дані залишились на цьому пристрої');
+    controls.hidden=true;decisions.hidden=true;login.hidden=false;document.getElementById('cloudLinkLogin').hidden=false;say('Вихід виконано • дані залишились на цьому пристрої');
   };
   document.getElementById('cloudBackup').onclick=()=>{
     const raw=localStorage.getItem('shliakh:before-cloud-backup');if(!raw){say('Резервну копію ще не створено');return;}

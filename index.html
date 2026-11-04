@@ -4,14 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#0a3029">
-  <meta name="app-version" content="19">
+  <meta name="app-version" content="20">
   <meta name="description" content="Приватний локальний фінансовий трекер шляху до 1 000 000 ₴">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Шлях до 1М">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>Шлях до 1 000 000 ₴</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-180.png">
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="planning.css?v=19">
-  <link rel="stylesheet" href="cloud.css?v=19">
+  <link rel="stylesheet" href="planning.css?v=20">
+  <link rel="stylesheet" href="cloud.css?v=20">
 </head>
 <body>
   <a class="skip-link" href="#main">До основного вмісту</a>
@@ -114,9 +119,11 @@
 
     <section id="view-data" class="view" aria-labelledby="data-title">
       <div class="section-title"><div><p class="eyebrow">Синхронізація та резервні копії</p><h1 id="data-title">Ваші дані на всіх пристроях</h1><p>Увійдіть в один акаунт на ноутбуці й телефоні. Збережені записи синхронізуються з приватним сховищем; чернетки планів залишаються на пристрої.</p></div></div>
+      <article class="card" id="installPanel"><h2>Іконка на головному екрані</h2><p id="installState"></p><button class="primary" id="installApp">Додати на головний екран</button><p id="installHelp" hidden></p><p class="fine-print">Після входу сесія запам’ятовується. На iPhone встановлена іконка іноді має окреме сховище: тоді увійди один раз прямо в ній. Не очищай дані застосунку, якщо хочеш залишатися в акаунті.</p></article>
       <article class="card" id="cloudPanel"><div class="card-heading"><h2>Приватна хмара</h2></div><p id="cloudMessage" role="status">Підключення…</p>
         <div id="cloudLogin" class="stack-form"><label>Email<input id="cloudEmail" type="email" autocomplete="email" required placeholder="Ваша електронна пошта"></label><button class="primary" id="cloudSend" type="button">Отримати лист для входу</button><label hidden>Код із листа<input id="cloudCode" autocomplete="one-time-code" inputmode="numeric" required pattern="[0-9]{6,10}" maxlength="10"></label><button hidden class="secondary" id="cloudVerify" type="button">Увійти за кодом</button><p class="fine-print">Відкрийте посилання з листа на тому пристрої, де хочете увійти. Вхід використовує пошту власника застосунку.</p></div>
-        <div id="cloudControls" hidden><p>Акаунт: <span id="cloudAccount"></span></p><div class="filters"><button class="primary" id="cloudSync">Синхронізувати зараз</button><button class="secondary" id="cloudLogout">Вийти</button></div></div>
+        <details id="cloudLinkLogin"><summary>Увійти в установленій іконці на iPhone</summary><p class="fine-print">Якщо посилання з листа відкриває Chrome замість іконки: затисни в листі кнопку входу, скопіюй посилання й встав його тут, у встановленому застосунку. Використовуй новий лист і не відкривай це посилання перед копіюванням.</p><label class="stack-form">Посилання для входу з листа<input id="cloudLoginLink" type="password" autocomplete="off" autocapitalize="off" spellcheck="false"></label><button class="secondary" id="cloudVerifyLink" type="button">Увійти в цьому застосунку</button></details>
+        <div id="cloudControls" hidden><p>Акаунт: <span id="cloudAccount"></span></p><div class="filters"><button class="primary" id="cloudSync">Синхронізувати зараз</button><button class="secondary" id="cloudLogout">Вийти лише тут</button></div></div>
         <div id="cloudDecisions" hidden><p>Перед заміною даних створюється резервна копія на цьому пристрої.</p><div class="filters"><button class="primary" id="cloudUpload">Використати дані цього пристрою</button><button class="secondary" id="cloudDownload">Використати хмарну копію</button></div></div>
         <button class="text-button" id="cloudBackup">Завантажити копію до синхронізації</button>
       </article>
@@ -131,13 +138,14 @@
     <section id="view-planning" class="view" aria-labelledby="planning-title"><div class="section-title"><div><p class="eyebrow">Помісячний бюджет</p><h1 id="planning-title">Планування</h1><p>Статті, категорії, план, факт і залишок.</p></div></div><div id="planningContent"></div></section>
   </main>
 
-  <footer><span>Шлях до 1 000 000 ₴ · Версія 19</span><span>Локальні чернетки • приватна синхронізація</span></footer>
+  <footer><span>Шлях до 1 000 000 ₴ · Версія 20</span><span>Локальні чернетки • приватна синхронізація</span></footer>
 
   <dialog id="editorDialog" aria-labelledby="dialogTitle"><form id="editorForm" method="dialog"><div class="dialog-head"><h2 id="dialogTitle">Редагування</h2><button type="button" class="icon-button" data-close aria-label="Закрити">×</button></div><div id="dialogFields" class="stack-form"></div><div class="dialog-actions"><button type="button" class="secondary" data-close>Скасувати</button><button type="submit" class="primary">Зберегти</button></div></form></dialog>
   <div id="toast" role="status" aria-live="polite"></div>
-  <script src="planning.js?v=19" defer></script>
-  <script src="app.js?v=19" defer></script>
-  <script src="cloud.js?v=19" defer></script>
-  <script src="update.js?v=19" defer></script>
+  <script src="planning.js?v=20" defer></script>
+  <script src="app.js?v=20" defer></script>
+  <script src="cloud.js?v=20" defer></script>
+  <script src="update.js?v=20" defer></script>
+  <script src="install.js?v=20" defer></script>
 </body>
 </html>

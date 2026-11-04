@@ -1,7 +1,7 @@
-const VERSION='19';
+const VERSION='20';
 const PREFIX='shliakh-1m-';
 const CACHE=PREFIX+'v'+VERSION;
-const ASSETS=['./index.html','./styles.css','./planning.css?v=19','./cloud.css?v=19','./planning.js?v=19','./app.js?v=19','./cloud.js?v=19','./update.js?v=19','./manifest.webmanifest','./icon.svg'];
+const ASSETS=['./index.html','./styles.css','./planning.css?v=20','./cloud.css?v=20','./planning.js?v=20','./app.js?v=20','./cloud.js?v=20','./update.js?v=20','./install.js?v=20','./manifest.webmanifest','./icon.svg','./icon-180.png','./icon-192.png','./icon-512.png'];
 self.addEventListener('install',event=>event.waitUntil((async()=>{
   const cache=await caches.open(CACHE);
   await cache.addAll(ASSETS.map(path=>new Request(new URL(path,self.registration.scope),{cache:'reload'})));
