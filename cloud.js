@@ -4,7 +4,7 @@
   const URL = 'https://dbscdgngumungwrjbbqo.supabase.co';
   const KEY = 'sb_publishable_svjnmv3XcvgNkMBdDNcWng_P8w8LTCO';
   const SESSION = 'shliakh:cloud-session';
-  const clean = value => { const data=JSON.parse(JSON.stringify(value)); delete data.planningDrafts; delete data.meta; return data; };
+  const clean = value => { const data=JSON.parse(JSON.stringify(value)); window.cleanupTestData?.(data); delete data.planningDrafts; delete data.meta; return data; };
   const canonical=value=>Array.isArray(value)?value.map(canonical):value&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])])):value;
   const equal=(a,b)=>JSON.stringify(canonical(a))===JSON.stringify(canonical(b));
   const fingerprint = value => JSON.stringify(canonical(clean(value)));
