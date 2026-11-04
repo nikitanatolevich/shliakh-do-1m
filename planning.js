@@ -99,14 +99,23 @@ window.renderPlanning = function(state, persist) {
   const actions = document.createElement('div'); actions.className = 'filters';
   actions.innerHTML = '<button class="primary" id="savePlanning">Зберегти</button><button class="secondary" id="cancelPlanning">Скасувати зміни</button><span role="status">' + (state.planningDrafts[key] ? 'Чернетка — ще не перенесено' : 'Показано збережений стан') + '</span><button class="secondary" data-view-link="money">Перевірити активи та борги</button><button class="secondary" data-open="snapshot">Контроль місяця</button><button class="secondary" data-view-link="data">Резервна копія</button>';
   host.prepend(actions);
-  const commit=()=>{state.planningDrafts[key]=plan;persist();window.renderPlanning(state,persist);};
+  const commit=(redraw=true)=>{
+    state.planningDrafts[key]=plan;persist('draft');
+    if(redraw){window.renderPlanning(state,persist);return;}
+    const totals=window.planningTotals(plan);
+    host.querySelector('[role="status"]').textContent='Чернетка — натисніть «Зберегти» для перенесення';
+    host.querySelectorAll('.metric strong').forEach((el,i)=>{el.textContent=fmt([totals.planned,totals.actual,totals.remainingPlan,totals.remainingActual][i]);});
+    host.querySelectorAll('tbody tr').forEach((tr,i)=>{const r=plan.rows[i];if(!r)return;tr.cells[4].textContent=fmt(r.planned-r.actual);tr.cells[5].textContent=plan.income?(r.planned/plan.income*100).toFixed(1)+'%':'—';if(r.percentSavings)tr.querySelector('[data-field="planned"]').value=r.planned;});
+    const footer=host.querySelector('tfoot tr');if(footer){footer.cells[1].textContent=fmt(totals.planned);footer.cells[2].textContent=fmt(totals.actual);footer.cells[3].textContent=fmt(totals.planned-totals.actual);}
+    const description=host.querySelector('.card .fine-print');if(description)description.textContent=`План заощаджень: ${fmt(plan.income*plan.reserve/100)} — включений у статтю «Заощадження». В активи потрапляє тільки збережений факт.`;
+  };
   host.onpointerdown=e=>{if(['savePlanning','cancelPlanning'].includes(e.target.id))e.preventDefault();};
   host.onchange=e=>{
     if(e.target.id==='planningMonth'){host.dataset.month=e.target.value;window.renderPlanning(state,persist);return;}
     if(e.target.id==='planningTab'){host.dataset.tab=e.target.value;window.renderPlanning(state,persist);return;}
     if(e.target.matches('input[type=number]')&&!e.target.checkValidity()){e.target.reportValidity();return;}
-    if(e.target.dataset.plan){plan[e.target.dataset.plan]=Number(e.target.value)||0;commit();}
-    if(e.target.dataset.row!==undefined){const f=e.target.dataset.field;plan.rows[Number(e.target.dataset.row)][f]=['planned','actual'].includes(f)?Number(e.target.value)||0:e.target.value.trim();commit();}
+    if(e.target.dataset.plan){plan[e.target.dataset.plan]=Number(e.target.value)||0;commit(false);}
+    if(e.target.dataset.row!==undefined){const f=e.target.dataset.field;plan.rows[Number(e.target.dataset.row)][f]=['planned','actual'].includes(f)?Number(e.target.value)||0:e.target.value.trim();commit(false);}
   };
   host.onclick=e=>{
     if(e.target.id==='cancelPlanning'){
@@ -119,7 +128,9 @@ window.renderPlanning = function(state, persist) {
       for(const input of inputs){if(!input.checkValidity()){input.reportValidity();return;}}
       inputs.forEach(input=>{if(input.dataset.plan)plan[input.dataset.plan]=Number(input.value)||0;if(input.dataset.row!==undefined&&!input.disabled){const f=input.dataset.field;plan.rows[Number(input.dataset.row)][f]=['planned','actual'].includes(f)?Number(input.value)||0:input.value.trim();}});
       if(plan.rows.some(r=>Number(r.actual)>0&&!window.planningCategories.some(c=>c.toLowerCase()===String(r.category).trim().toLowerCase()))){alert('Оберіть категорію для кожної статті з фактичною сумою.');return;}
-      window.savePlanning(state,key,plan);persist();window.renderPlanning(state,persist);return;
+      window.savePlanning(state,key,plan);persist();window.renderPlanning(state,persist);
+      host.querySelector('[role="status"]').textContent='Збережено. Фактичні суми перенесено в активи та витрати.';
+      host.querySelector('#savePlanning').focus();return;
     }
     if(e.target.id==='addPlanningRow'){plan.rows.push({name:'Нова стаття',category:'',planned:0,actual:0,payer:'',note:''});commit();}
     if(e.target.dataset.removePlan!==undefined){const index=Number(e.target.dataset.removePlan);if(plan.rows[index].percentSavings){alert('Ця стаття пов’язана з відсотком. Щоб прибрати план, встановіть 0%. Фактичний внесок збережеться.');return;}if(confirm('Видалити статтю плану?')){plan.rows.splice(index,1);commit();}}
