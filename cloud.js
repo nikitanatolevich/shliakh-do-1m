@@ -1,0 +1,126 @@
+/* Public browser key only. Access is enforced by database ownership policies. */
+(() => {
+  'use strict';
+  const URL = 'https://dbscdgngumungwrjbbqo.supabase.co';
+  const KEY = 'sb_publishable_svjnmv3XcvgNkMBdDNcWng_P8w8LTCO';
+  const SESSION = 'shliakh:cloud-session';
+  const clean = value => { const data=JSON.parse(JSON.stringify(value)); delete data.planningDrafts; delete data.meta; return data; };
+  const fingerprint = value => JSON.stringify(clean(value));
+  window.financeCloudData = {clean,fingerprint};
+  let session, user, base, choice=false, busy=false, stopped=false, timer, refreshPromise;
+  try { session=JSON.parse(localStorage.getItem(SESSION)); } catch { session=null; }
+  const panel=document.getElementById('cloudPanel');
+  const status=document.getElementById('cloudStatus');
+  const message=document.getElementById('cloudMessage');
+  const login=document.getElementById('cloudLogin');
+  const controls=document.getElementById('cloudControls');
+  const decisions=document.getElementById('cloudDecisions');
+  const say=text=>{status.textContent=text;message.textContent=text;};
+  const metaKey=()=>`shliakh:cloud-base:${user.id}`;
+  const remember=(revision,hash)=>{base={revision,hash};localStorage.setItem(metaKey(),JSON.stringify(base));};
+  const backup=()=>{
+    const stamp=new Date().toISOString();
+    localStorage.setItem('shliakh:before-cloud-backup',JSON.stringify({at:stamp,data:window.financeApp.read()}));
+  };
+  const persistSession=data=>{session={access_token:data.access_token,refresh_token:data.refresh_token,expires_at:Math.floor(Date.now()/1000)+data.expires_in};localStorage.setItem(SESSION,JSON.stringify(session));};
+  async function api(path,{method='GET',body,auth=true}={}) {
+    if(auth) await ensureSession();
+    const headers={apikey:KEY};if(auth)headers.Authorization=`Bearer ${session.access_token}`;
+    if(body)headers['Content-Type']='application/json';
+    const response=await fetch(URL+path,{method,headers,body:body?JSON.stringify(body):undefined,cache:'no-store'});
+    const data=await response.json().catch(()=>null);
+    if(!response.ok){const error=new Error(data?.message||data?.msg||'Помилка з’єднання');error.code=data?.code;error.status=response.status;throw error;}
+    return data;
+  }
+  async function ensureSession() {
+    if(!session)throw new Error('Потрібно увійти');
+    if(session.expires_at>Date.now()/1000+60)return;
+    if(!refreshPromise) refreshPromise=api('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:{refresh_token:session.refresh_token},auth:false}).then(persistSession).finally(()=>{refreshPromise=null;});
+    await refreshPromise;
+  }
+  async function remote(){const rows=await api('/rest/v1/finance_snapshots?select=payload,revision,updated_at');return rows[0]||null;}
+  function decision(text,exists){choice=true;decisions.hidden=false;document.getElementById('cloudDownload').hidden=!exists;say(text);}
+  function validate(data){if(data?.version!==1||!Array.isArray(data.assets)||!Array.isArray(data.debts)||!Array.isArray(data.transactions))throw new Error('Невідома структура хмарної копії');}
+  function receive(row){validate(row.payload);backup();window.financeApp.apply(row.payload);remember(row.revision,fingerprint(row.payload));say('Синхронізовано • '+new Date(row.updated_at).toLocaleTimeString('uk-UA'));}
+  async function write(expected) {
+    const payload=clean(window.financeApp.read());
+    const rows=await api('/rest/v1/rpc/save_finance_snapshot',{method:'POST',body:{p_payload:payload,p_expected_revision:expected}});
+    remember(rows[0].revision,fingerprint(payload));say('Синхронізовано • '+new Date().toLocaleTimeString('uk-UA'));
+  }
+  async function connect() {
+    user=await api('/auth/v1/user');
+    login.hidden=true;controls.hidden=false;document.getElementById('cloudAccount').textContent=user.email;
+    try{base=JSON.parse(localStorage.getItem(metaKey()));}catch{base=null;}
+    const row=await remote();
+    if(!base){decision(row?'Знайдено хмарну копію. Обери, які дані використати для першого підключення.':'Хмара порожня. Почни з пристрою, де вже є твої дані.',!!row);return;}
+    stopped=false;await sync();
+  }
+  async function sync() {
+    if(!user||choice||stopped||busy)return;
+    busy=true;
+    try {
+      if(!navigator.onLine){say('Немає інтернету • зміни збережені на пристрої');return;}
+      const row=await remote();const hash=fingerprint(window.financeApp.read());
+      if(!row){decision('Хмарної копії немає. Обери дані цього пристрою для початку.',false);return;}
+      if(row.revision!==base?.revision){
+        if(Object.keys(window.financeApp.read().planningDrafts||{}).length){say('Є хмарне оновлення. Збережи або скасуй локальну чернетку перед синхронізацією.');return;}
+        if(hash!==base?.hash){decision('Є зміни на двох пристроях. Вибери копію; локальну буде зарезервовано.',true);return;}
+        if(document.querySelector('dialog[open]')||document.activeElement?.matches('input,textarea,select')){say('Є оновлення з іншого пристрою • заверш редагування');return;}
+        receive(row);
+      } else if(hash!==base?.hash){say('Синхронізація…');await write(row.revision);}
+      else say('Синхронізовано');
+    } catch(error) {
+      if(error.code==='P0001')decision('Дані змінилися на іншому пристрої. Вибери копію для продовження.',true);
+      else if(error.status===401||error.status===403){stopped=true;say('Сесію завершено або немає доступу. Вийди та увійди знову.');}
+      else say('Не синхронізовано • локальні дані збережені. '+error.message);
+    } finally {busy=false;}
+  }
+  document.getElementById('cloudSend').onclick=async()=>{
+    const email=document.getElementById('cloudEmail');if(!email.reportValidity())return;
+    const button=document.getElementById('cloudSend');button.disabled=true;
+    try{await api('/auth/v1/otp?redirect_to='+encodeURIComponent(location.origin+location.pathname),{method:'POST',auth:false,body:{email:email.value.trim(),create_user:true}});say('Лист надіслано. Введи код із листа або відкрий посилання на цьому пристрої.');}
+    catch(error){say('Не вдалося надіслати лист: '+error.message);}
+    finally{button.disabled=false;}
+  };
+  document.getElementById('cloudVerify').onclick=async()=>{
+    const email=document.getElementById('cloudEmail'),token=document.getElementById('cloudCode');if(!email.reportValidity()||!token.reportValidity())return;
+    try{const data=await api('/auth/v1/verify',{method:'POST',auth:false,body:{email:email.value.trim(),token:token.value.trim(),type:'email'}});persistSession(data);token.value='';await connect();}
+    catch(error){say('Не вдалося увійти: '+error.message);}
+  };
+  document.getElementById('cloudUpload').onclick=async()=>{
+    if(busy)return;busy=true;
+    try{
+      const row=await remote();
+      if(row&&!confirm('Замінити хмарну копію даними цього пристрою? Збережіть JSON-копію обох версій перед заміною.'))return;
+      backup();if(row)localStorage.setItem('shliakh:remote-conflict-backup',JSON.stringify(row.payload));
+      await write(row?.revision||0);choice=false;stopped=false;decisions.hidden=true;
+    }catch(error){say('Не збережено в хмару: '+error.message);}finally{busy=false;}
+  };
+  document.getElementById('cloudDownload').onclick=async()=>{
+    if(busy)return;busy=true;
+    try{const row=await remote();if(!row)throw new Error('Хмарна копія відсутня');if(!confirm('Використати хмарні дані? Поточні дані пристрою будуть збережені в локальній резервній копії.'))return;receive(row);choice=false;stopped=false;decisions.hidden=true;}
+    catch(error){say('Не завантажено: '+error.message);}finally{busy=false;}
+  };
+  document.getElementById('cloudSync').onclick=()=>sync();
+  document.getElementById('cloudLogout').onclick=async()=>{
+    stopped=true;clearTimeout(timer);
+    try{if(session)await api('/auth/v1/logout',{method:'POST'});}catch{}
+    session=null;user=null;base=null;choice=false;localStorage.removeItem(SESSION);
+    controls.hidden=true;decisions.hidden=true;login.hidden=false;say('Вихід виконано • дані залишились на цьому пристрої');
+  };
+  document.getElementById('cloudBackup').onclick=()=>{
+    const raw=localStorage.getItem('shliakh:before-cloud-backup');if(!raw){say('Резервну копію ще не створено');return;}
+    const data=JSON.parse(raw);const a=document.createElement('a');a.href=window.URL.createObjectURL(new Blob([JSON.stringify(data.data,null,2)],{type:'application/json'}));a.download='shliakh-before-cloud.json';a.click();setTimeout(()=>window.URL.revokeObjectURL(a.href),1000);
+  };
+  window.addEventListener('finance-change',()=>{if(user&&!choice){say('Є локальні зміни • очікують синхронізації');clearTimeout(timer);timer=setTimeout(sync,900);}});
+  window.addEventListener('online',()=>sync());
+  setInterval(()=>{if(!document.hidden)sync();},15000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync();});
+  (async()=>{
+    try{
+      const hash=new URLSearchParams((window.financeAuthHash||location.hash).slice(1));delete window.financeAuthHash;
+      if(hash.has('access_token')){persistSession({access_token:hash.get('access_token'),refresh_token:hash.get('refresh_token'),expires_in:Number(hash.get('expires_in')||3600)});history.replaceState(null,'',location.pathname+'#data');}
+      if(session)await connect();else say('Лише на пристрої • увійди для синхронізації');
+    }catch(error){say('Не вдалося підключитися: '+error.message);}
+  })();
+})();
