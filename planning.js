@@ -43,6 +43,22 @@ window.syncPlanningSavings = function(state) {
   });
   return changed;
 };
+window.savePlanning = function(state, key, draft) {
+  const plan = JSON.parse(JSON.stringify(draft));
+  window.prepareSavingsPlan(plan);
+  const month = key.slice(0,7);
+  const day = new Date().toLocaleDateString('sv-SE');
+  state.planning ||= {}; state.transactions ||= [];
+  state.planning[key] = plan;
+  state.transactions = state.transactions.filter(t => t.planningKey !== key);
+  plan.rows.forEach((row,index) => {
+    const amount = Math.round(Math.max(0,Number(row.actual)||0)*100)/100;
+    const route = window.planningAssetRoutes.find(r => r.category.toLowerCase() === String(row.category).trim().toLowerCase());
+    if (amount > 0 && !route) state.transactions.push({id:`planning:${key}:${index}`,planningKey:key,source:'planning',date:day.startsWith(month)?day:`${month}-01`,type:'expense',category:row.category,bucket:'current',amount,note:`${row.name || ''}${row.note ? ': '+row.note : ''}`});
+  });
+  if (state.planningDrafts) delete state.planningDrafts[key];
+  window.syncPlanningSavings(state);
+};
 window.renderPlanning = function(state, persist) {
   const host = document.getElementById('planningContent');
   if (!host) return;
@@ -52,8 +68,9 @@ window.renderPlanning = function(state, persist) {
   const tab = host.dataset.tab || 'ЗП';
   const tabs = ['ЗП','Винагорода','Аудит','Відпустка'];
   state.planning ||= {};
+  state.planningDrafts ||= {};
   const key = `${month}:${tab}`;
-  const plan = state.planning[key] || {income:0,reserve:0,rows:[]};
+  const plan = JSON.parse(JSON.stringify(state.planningDrafts[key] || state.planning[key] || {income:0,reserve:0,rows:[]}));
   const {planned,actual,remainingPlan,remainingActual}=window.planningTotals(plan);
   const reserved=plan.income*plan.reserve/100;
   host.innerHTML = `<div class="filters"><label>Місяць<input id="planningMonth" type="month" value="${month}"></label><label>Розділ<select id="planningTab">${tabs.map(t=>`<option ${t===tab?'selected':''}>${t}</option>`).join('')}</select></label><button type="button" class="secondary" id="copyPlanning">Копіювати попередній місяць</button></div>
@@ -75,11 +92,12 @@ window.renderPlanning = function(state, persist) {
     }
   });
   const note = host.querySelector('article.card .fine-print');
-  if (note) note.textContent = 'Лише факт формує активи: «Заощадження» → Подушка безпеки (Emergency Fund); «На всяк випадок» та «Відпустка» → окремі активи у Planned Expenses. Зміна факту, категорії або видалення рядка перераховує відповідний актив. Не додавайте ці самі гроші вручну повторно. Інші категорії не змінюють активів.';
+  if (note) note.textContent = 'Перенесення відбувається тільки після «Зберегти»: факт «Заощадження» → Подушка безпеки; «На всяк випадок» та «Відпустка» → окремі активи у Planned Expenses. Факт інших категорій → журнал витрат (за минулі місяці дата — перше число місяця). Не дублюйте ці витрати вручну. Повторне збереження оновлює записи цього розділу. Внески в активи не записуються як витрати.';
   const actions = document.createElement('div'); actions.className = 'filters';
-  actions.innerHTML = '<button class="secondary" data-view-link="money">Перевірити активи та борги</button><button class="secondary" data-open="snapshot">Контроль місяця</button><button class="secondary" data-view-link="data">Резервна копія</button>';
+  actions.innerHTML = '<button class="primary" id="savePlanning">Зберегти</button><span role="status">' + (state.planningDrafts[key] ? 'Чернетка — ще не перенесено' : 'Показано збережений стан') + '</span><button class="secondary" data-view-link="money">Перевірити активи та борги</button><button class="secondary" data-open="snapshot">Контроль місяця</button><button class="secondary" data-view-link="data">Резервна копія</button>';
   host.prepend(actions);
-  const commit=()=>{state.planning[key]=plan;persist();window.renderPlanning(state,persist);};
+  const commit=()=>{state.planningDrafts[key]=plan;persist();window.renderPlanning(state,persist);};
+  host.onpointerdown=e=>{if(e.target.id==='savePlanning')e.preventDefault();};
   host.onchange=e=>{
     if(e.target.id==='planningMonth'){host.dataset.month=e.target.value;window.renderPlanning(state,persist);return;}
     if(e.target.id==='planningTab'){host.dataset.tab=e.target.value;window.renderPlanning(state,persist);return;}
@@ -88,13 +106,20 @@ window.renderPlanning = function(state, persist) {
     if(e.target.dataset.row!==undefined){const f=e.target.dataset.field;plan.rows[Number(e.target.dataset.row)][f]=['planned','actual'].includes(f)?Number(e.target.value)||0:e.target.value.trim();commit();}
   };
   host.onclick=e=>{
+    if(e.target.id==='savePlanning'){
+      const inputs=[...host.querySelectorAll('input,select')];
+      for(const input of inputs){if(!input.checkValidity()){input.reportValidity();return;}}
+      inputs.forEach(input=>{if(input.dataset.plan)plan[input.dataset.plan]=Number(input.value)||0;if(input.dataset.row!==undefined&&!input.disabled){const f=input.dataset.field;plan.rows[Number(input.dataset.row)][f]=['planned','actual'].includes(f)?Number(input.value)||0:input.value.trim();}});
+      if(plan.rows.some(r=>Number(r.actual)>0&&!window.planningCategories.some(c=>c.toLowerCase()===String(r.category).trim().toLowerCase()))){alert('Оберіть категорію для кожної статті з фактичною сумою.');return;}
+      window.savePlanning(state,key,plan);persist();window.renderPlanning(state,persist);return;
+    }
     if(e.target.id==='addPlanningRow'){plan.rows.push({name:'Нова стаття',category:'',planned:0,actual:0,payer:'',note:''});commit();}
     if(e.target.dataset.removePlan!==undefined){const index=Number(e.target.dataset.removePlan);if(plan.rows[index].percentSavings){alert('Ця стаття пов’язана з відсотком. Щоб прибрати план, встановіть 0%. Фактичний внесок збережеться.');return;}if(confirm('Видалити статтю плану?')){plan.rows.splice(index,1);commit();}}
     if(e.target.id==='copyPlanning'){
       const date=new Date(`${month}-01T12:00:00`);date.setMonth(date.getMonth()-1);const prev=`${date.toLocaleDateString('sv-SE').slice(0,7)}:${tab}`;
       if(!state.planning[prev]){alert('У попередньому місяці немає плану цього розділу.');return;}
       if(plan.rows.length&&!confirm('Замінити поточний план копією попереднього місяця?'))return;
-      state.planning[key]=JSON.parse(JSON.stringify(state.planning[prev]));state.planning[key].rows.forEach(r=>r.actual=0);persist();window.renderPlanning(state,persist);
+      state.planningDrafts[key]=JSON.parse(JSON.stringify(state.planning[prev]));state.planningDrafts[key].rows.forEach(r=>r.actual=0);persist();window.renderPlanning(state,persist);
     }
   };
 };
