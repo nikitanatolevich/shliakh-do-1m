@@ -50,7 +50,7 @@
     try{response=await fetch(URL+path,{method,headers,body:body?JSON.stringify(body):undefined,cache:'no-store',signal:controller.signal});data=await response.json().catch(()=>null);}
     catch(error){if(error.name==='AbortError')throw new Error('Сервер не відповів за 15 секунд. Перевір інтернет і повтори.');throw error;}
     finally{clearTimeout(timeout);}
-    if(!response.ok){const error=new Error(data?.message||data?.msg||'Помилка з’єднання');error.code=data?.code;error.status=response.status;throw error;}
+    if(!response.ok){const error=new Error(data?.message||data?.msg||data?.error_description||'Помилка з’єднання');error.code=data?.error_code||data?.code;error.status=response.status;throw error;}
     return data;
   }
   async function ensureSession() {
@@ -114,7 +114,7 @@
   document.getElementById('cloudSend').onclick=async()=>{
     const email=document.getElementById('cloudEmail');if(!email.reportValidity())return;
     const button=document.getElementById('cloudSend');button.disabled=true;
-    try{await api('/auth/v1/otp?redirect_to='+encodeURIComponent(location.origin+location.pathname),{method:'POST',auth:false,body:{email:email.value.trim(),create_user:true}});say('Лист надіслано. Введи код із листа або відкрий посилання на цьому пристрої.');}
+    try{await api('/auth/v1/otp?redirect_to='+encodeURIComponent(location.origin+location.pathname),{method:'POST',auth:false,body:{email:email.value.trim(),create_user:true}});say(navigator.standalone===true||window.matchMedia?.('(display-mode: standalone)').matches?'Новий лист надіслано. Скопіюй посилання з найновішого листа, не відкриваючи його, та встав нижче у «Увійти в установленій іконці на iPhone».':'Лист надіслано. Відкрий посилання з найновішого листа на цьому пристрої.');}
     catch(error){say('Не вдалося надіслати лист: '+error.message);}
     finally{button.disabled=false;}
   };
@@ -125,6 +125,7 @@
   };
   document.getElementById('cloudVerifyLink').onclick=async()=>{
     const field=document.getElementById('cloudLoginLink');
+    const button=document.getElementById('cloudVerifyLink');if(button.disabled)return;button.disabled=true;
     try{
       const link=new window.URL(field.value.trim());
       if(link.origin!==URL||link.pathname!=='/auth/v1/verify')throw new Error('Потрібне оригінальне посилання входу з листа Supabase');
@@ -132,7 +133,8 @@
       if(!hash||hash.length<20||hash.length>500)throw new Error('Посилання не містить одноразового токена');
       const data=await api('/auth/v1/verify',{method:'POST',auth:false,body:{token_hash:hash,type:'email'}});
       field.value='';persistSession(data);await connect();
-    }catch(error){field.value='';say('Не вдалося увійти: '+error.message);}
+    }catch(error){field.value='';say(error.code==='otp_expired'?'Посилання вже використане або втратило чинність. Натисни «Отримати лист для входу» та скопіюй посилання з найновішого листа, не відкриваючи його. Старе посилання повторно не працює.':'Не вдалося увійти: '+(error instanceof TypeError?'Перевір інтернет і встав повне посилання з листа.':error.message));}
+    finally{button.disabled=false;}
   };
   document.getElementById('cloudUpload').onclick=async()=>{
     if(busy)return;busy=true;
