@@ -69,11 +69,11 @@
   });
 
   let state = load();
-  const resetPlanningView = localStorage.getItem('shliakh:test-cleanup-2026-11') !== 'done';
+  const resetPlanningView = localStorage.getItem('shliakh:final-test-cleanup-19') !== 'done';
   if(resetPlanningView){
-    if(window.cleanupTestDrafts(state))localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+    if(window.cleanupTestData(state).total)localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
     sessionStorage.removeItem('shliakh:update-view');
-    localStorage.setItem('shliakh:test-cleanup-2026-11','done');
+    localStorage.setItem('shliakh:final-test-cleanup-19','done');
   }
   let editor = null;
   const $ = selector => document.querySelector(selector);
@@ -130,6 +130,7 @@
   }
 
   function render() {
+    if(window.cleanupTestData(state).total)save();
     if (window.syncPlanningSavings(state)) save();
     document.documentElement.dataset.theme = state.meta.theme || 'light';
     renderDashboard(); renderMoney(); renderFunds(); renderMonthly(); renderBusiness(); renderPlan();
@@ -440,11 +441,12 @@
 
   window.financeApp = {
     read: () => JSON.parse(JSON.stringify(state)),
-    checkpoint: () => { const latest=localStorage.getItem(STORAGE_KEY)?load():JSON.parse(JSON.stringify(state));window.capturePlanningDraft(latest);localStorage.setItem(STORAGE_KEY,JSON.stringify(latest)); },
+    checkpoint: () => { const latest=localStorage.getItem(STORAGE_KEY)?load():JSON.parse(JSON.stringify(state));window.capturePlanningDraft(latest);window.cleanupTestData(latest);localStorage.setItem(STORAGE_KEY,JSON.stringify(latest)); },
     apply: (data, {discardDraftKeys=[]}={}) => {
       const drafts=state.planningDrafts || {}, theme=state.meta.theme;
       discardDraftKeys.forEach(key=>delete drafts[key]);
       state={...defaults(),...data,planningDrafts:drafts,meta:{updatedAt:new Date().toISOString(),theme}};
+      window.cleanupTestData(state);
       localStorage.setItem(STORAGE_KEY,JSON.stringify(state));render();
     }
   };
