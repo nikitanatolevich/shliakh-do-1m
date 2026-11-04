@@ -157,6 +157,10 @@ window.renderPlanning = function(state, persist) {
   };
   host.onpointerdown=e=>{if(['savePlanning','cancelPlanning'].includes(e.target.id))e.preventDefault();};
   host.oninput=e=>{
+    if(e.target.type==='number'&&e.target.checkValidity()){
+      if(e.target.dataset.plan){plan[e.target.dataset.plan]=Number(e.target.value)||0;commit(false);}
+      else if(e.target.dataset.row!==undefined&&['planned','actual'].includes(e.target.dataset.field)){plan.rows[Number(e.target.dataset.row)][e.target.dataset.field]=Number(e.target.value)||0;commit(false);}
+    }
     if(e.target.dataset.row!==undefined&&['name','payer','note'].includes(e.target.dataset.field)){
       plan.rows[Number(e.target.dataset.row)][e.target.dataset.field]=e.target.value;commit(false);
     }
