@@ -8,6 +8,7 @@
   const fingerprint = value => JSON.stringify(clean(value));
   window.financeCloudData = {clean,fingerprint};
   let session, user, base, choice=false, busy=false, stopped=false, timer, refreshPromise;
+  window.financeCloudBusy=()=>busy||!!refreshPromise;
   try { session=JSON.parse(localStorage.getItem(SESSION)); } catch { session=null; }
   const panel=document.getElementById('cloudPanel');
   const status=document.getElementById('cloudStatus');
