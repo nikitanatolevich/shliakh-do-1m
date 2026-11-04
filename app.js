@@ -182,7 +182,8 @@
       ['Назва', 'Кошик', 'Сума', 'Статус', ''],
       state.assets.map(item => [esc(item.name), esc(BUCKETS[item.bucket]?.label || item.bucket), money(item.amount), item.verified ? '✓ підтверджено' : '⚠ не підтверджено', actions('asset', item.id)])
     );
-    if (state.assets.some(item => item.id === 'planning-savings')) $('#assetsTable').innerHTML += '<p class="fine-print">Заощадження з планування — сума внесків, а не банківська звірка. Не включайте ті самі гроші в інший актив повторно.</p><button class="secondary small" id="verifyPlanningSavings">Підтвердити залишок заощаджень</button>';
+    const generated = state.assets.filter(item => window.planningAssetRoutes.some(route => route.id === item.id));
+    if (generated.length) $('#assetsTable').innerHTML += '<p class="fine-print">Активи з планування — суми фактичних внесків. Не включайте ті самі гроші в інший актив повторно. Перевірте поточний залишок перед підтвердженням.</p>' + generated.map(item => `<button class="secondary small" data-verify-planning="${item.id}">Підтвердити: ${esc(item.name)}</button>`).join(' ');
     $('#debtsTable').innerHTML = state.debts.length ? table(
       ['Назва', 'Сума', 'Статус', ''],
       state.debts.map(item => [esc(item.name), money(item.amount), item.verified ? '✓ підтверджено' : '⚠ не підтверджено', actions('debt', item.id)])
@@ -312,7 +313,7 @@
   };
 
   function openEditor(type, id = null) {
-    if (type === 'asset' && id === 'planning-savings') { toast('Змініть суму внеску у вкладці «Планування». Підтвердити залишок можна кнопкою під списком активів.'); return; }
+    if (type === 'asset' && window.planningAssetRoutes.some(route => route.id === id)) { toast('Змініть суму внеску у вкладці «Планування». Підтвердити залишок можна кнопкою під списком активів.'); return; }
     const schema = schemas[type];
     if (!schema) return;
     const existing = id ? state[schema.collection].find(item => item.id === id) : null;
@@ -351,7 +352,7 @@
   }
 
   function deleteItem(type, id) {
-    if (type === 'asset' && id === 'planning-savings') { toast('Видаліть або змініть відповідні внески у «Плануванні».'); return; }
+    if (type === 'asset' && window.planningAssetRoutes.some(route => route.id === id)) { toast('Видаліть або змініть відповідні внески у «Плануванні».'); return; }
     const schema = schemas[type]; if (!schema) return;
     if (!confirm('Видалити цей запис?')) return;
     state[schema.collection] = state[schema.collection].filter(item => item.id !== id);
@@ -402,7 +403,7 @@
   }
 
   document.addEventListener('click', event => {
-    if (event.target.id === 'verifyPlanningSavings') { const asset = state.assets.find(item => item.id === 'planning-savings'); if (asset) { asset.verified = true; save(); render(); toast('Залишок підтверджено'); } }
+    if (event.target.dataset.verifyPlanning) { const asset = state.assets.find(item => item.id === event.target.dataset.verifyPlanning); if (asset) { asset.verified = true; save(); render(); toast('Залишок підтверджено'); } }
     const open = event.target.closest('[data-open]'); if (open) openEditor(open.dataset.open);
     const view = event.target.closest('[data-view], [data-view-link]'); if (view) setView(view.dataset.view || view.dataset.viewLink);
     const edit = event.target.closest('[data-edit]'); if (edit) openEditor(edit.dataset.edit, edit.dataset.id);
