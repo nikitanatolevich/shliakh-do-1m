@@ -27,8 +27,11 @@
     if(auth) await ensureSession();
     const headers={apikey:KEY};if(auth)headers.Authorization=`Bearer ${session.access_token}`;
     if(body)headers['Content-Type']='application/json';
-    const response=await fetch(URL+path,{method,headers,body:body?JSON.stringify(body):undefined,cache:'no-store'});
-    const data=await response.json().catch(()=>null);
+    const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),15000);
+    let response,data;
+    try{response=await fetch(URL+path,{method,headers,body:body?JSON.stringify(body):undefined,cache:'no-store',signal:controller.signal});data=await response.json().catch(()=>null);}
+    catch(error){if(error.name==='AbortError')throw new Error('Сервер не відповів за 15 секунд. Перевір інтернет і повтори.');throw error;}
+    finally{clearTimeout(timeout);}
     if(!response.ok){const error=new Error(data?.message||data?.msg||'Помилка з’єднання');error.code=data?.code;error.status=response.status;throw error;}
     return data;
   }
@@ -56,8 +59,12 @@
     stopped=false;await sync();
   }
   async function sync() {
-    if(!user||choice||stopped||busy)return;
+    if(!user){say('Увійди в акаунт для синхронізації');return;}
+    if(choice){say('Спершу обери: дані цього пристрою чи хмарна копія.');return;}
+    if(stopped){say('Потрібно вийти та увійти знову');return;}
+    if(busy){say('Запит уже виконується • зачекай до 15 секунд');return;}
     busy=true;
+    say('Перевіряю хмару…');
     try {
       if(!navigator.onLine){say('Немає інтернету • зміни збережені на пристрої');return;}
       const row=await remote();const hash=fingerprint(window.financeApp.read());
