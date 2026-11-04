@@ -43,6 +43,17 @@ window.syncPlanningSavings = function(state) {
   });
   return changed;
 };
+window.cleanupTestDrafts = function(state) {
+  let removed=0;
+  for(const key of ['2099-11:ЗП','2099-12:ЗП']){
+    const plan=state.planningDrafts?.[key];if(!plan)continue;
+    const known=/^(Тест з телефона|Тест з ноутбука|Чернетка телефону|Чернетка ноутбука(?: — збереження після оновлення)?|Нова стаття)$/;
+    if(Number(plan.income||0)===0&&Number(plan.reserve||0)===0&&Array.isArray(plan.rows)&&plan.rows.every(r=>known.test(String(r.name).trim())&&Number(r.planned||0)===0&&Number(r.actual||0)===0&&!r.note&&!r.payer)){
+      delete state.planningDrafts[key];removed++;
+    }
+  }
+  return removed;
+};
 window.capturePlanningDraft = function(state, host=document.getElementById('planningContent')) {
   if(!host)return;
   const month=host.querySelector('#planningMonth')?.value,tab=host.querySelector('#planningTab')?.value;
