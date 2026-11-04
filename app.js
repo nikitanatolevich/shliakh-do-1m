@@ -442,6 +442,9 @@
   };
   if (location.hash.includes('access_token=')) window.financeAuthHash=location.hash;
   const initialView = window.financeAuthHash ? 'data' : location.hash.slice(1); setView(document.getElementById(`view-${initialView}`) ? initialView : 'planning');
+  try {
+    const restore=JSON.parse(sessionStorage.getItem('shliakh:update-view')||'null');
+    if(restore){const host=document.getElementById('planningContent');if(restore.month)host.dataset.month=restore.month;if(restore.tab)host.dataset.tab=restore.tab;sessionStorage.removeItem('shliakh:update-view');requestAnimationFrame(()=>window.scrollTo(0,restore.scroll||0));}
+  }catch{}
   render();
-  if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('./sw.js').catch(error => console.warn('Service worker недоступний', error));
 })();
