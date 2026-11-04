@@ -9,7 +9,8 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="planning.css?v=7">
+  <link rel="stylesheet" href="planning.css?v=8">
+  <link rel="stylesheet" href="cloud.css?v=8">
 </head>
 <body>
   <a class="skip-link" href="#main">До основного вмісту</a>
@@ -20,6 +21,7 @@
     </div>
     <div class="header-actions">
       <span id="saveStatus" class="save-status" role="status">Збережено локально</span>
+      <button class="text-button" data-view-link="data" id="cloudStatus">Хмара: вхід</button>
       <button class="icon-button" id="themeToggle" type="button" aria-label="Змінити тему">◐</button>
     </div>
   </header>
@@ -109,7 +111,13 @@
     </section>
 
     <section id="view-data" class="view" aria-labelledby="data-title">
-      <div class="section-title"><div><p class="eyebrow">Приватність і резервні копії</p><h1 id="data-title">Ваші дані залишаються у браузері</h1><p>Немає акаунта, сервера, аналітики чи секретів. Для перенесення між пристроями потрібен JSON-файл.</p></div></div>
+      <div class="section-title"><div><p class="eyebrow">Синхронізація та резервні копії</p><h1 id="data-title">Ваші дані на всіх пристроях</h1><p>Увійдіть в один акаунт на ноутбуці й телефоні. Збережені записи синхронізуються з приватним сховищем; чернетки планів залишаються на пристрої.</p></div></div>
+      <article class="card" id="cloudPanel"><div class="card-heading"><h2>Приватна хмара</h2></div><p id="cloudMessage" role="status">Підключення…</p>
+        <div id="cloudLogin" class="stack-form"><label>Email<input id="cloudEmail" type="email" autocomplete="email" required placeholder="Ваша електронна пошта"></label><button class="primary" id="cloudSend" type="button">Отримати лист для входу</button><label hidden>Код із листа<input id="cloudCode" autocomplete="one-time-code" inputmode="numeric" required pattern="[0-9]{6,10}" maxlength="10"></label><button hidden class="secondary" id="cloudVerify" type="button">Увійти за кодом</button><p class="fine-print">Відкрийте посилання з листа на тому пристрої, де хочете увійти. Вхід використовує пошту власника застосунку.</p></div>
+        <div id="cloudControls" hidden><p>Акаунт: <span id="cloudAccount"></span></p><div class="filters"><button class="primary" id="cloudSync">Синхронізувати зараз</button><button class="secondary" id="cloudLogout">Вийти</button></div></div>
+        <div id="cloudDecisions" hidden><p>Перед заміною даних створюється резервна копія на цьому пристрої.</p><div class="filters"><button class="primary" id="cloudUpload">Використати дані цього пристрою</button><button class="secondary" id="cloudDownload">Використати хмарну копію</button></div></div>
+        <button class="text-button" id="cloudBackup">Завантажити копію до синхронізації</button>
+      </article>
       <div class="card-grid data-grid">
         <article class="card"><h2>Експорт</h2><p>Завантажте повну резервну копію. Зберігайте її у приватному місці.</p><button id="exportBtn" class="primary">Завантажити JSON</button></article>
         <article class="card"><h2>Імпорт</h2><p>Імпорт замінить поточні локальні дані після підтвердження.</p><label class="file-button">Обрати JSON<input id="importInput" type="file" accept="application/json,.json"></label></article>
@@ -121,11 +129,12 @@
     <section id="view-planning" class="view" aria-labelledby="planning-title"><div class="section-title"><div><p class="eyebrow">Помісячний бюджет</p><h1 id="planning-title">Планування</h1><p>Статті, категорії, план, факт і залишок.</p></div></div><div id="planningContent"></div></section>
   </main>
 
-  <footer><span>Шлях до 1 000 000 ₴</span><span>Локально • приватно • без бекенду</span></footer>
+  <footer><span>Шлях до 1 000 000 ₴</span><span>Локальні чернетки • приватна синхронізація</span></footer>
 
   <dialog id="editorDialog" aria-labelledby="dialogTitle"><form id="editorForm" method="dialog"><div class="dialog-head"><h2 id="dialogTitle">Редагування</h2><button type="button" class="icon-button" data-close aria-label="Закрити">×</button></div><div id="dialogFields" class="stack-form"></div><div class="dialog-actions"><button type="button" class="secondary" data-close>Скасувати</button><button type="submit" class="primary">Зберегти</button></div></form></dialog>
   <div id="toast" role="status" aria-live="polite"></div>
-  <script src="planning.js?v=7" defer></script>
-  <script src="app.js?v=7" defer></script>
+  <script src="planning.js?v=8" defer></script>
+  <script src="app.js?v=8" defer></script>
+  <script src="cloud.js?v=8" defer></script>
 </body>
 </html>
