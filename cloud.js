@@ -5,8 +5,25 @@
   const KEY = 'sb_publishable_svjnmv3XcvgNkMBdDNcWng_P8w8LTCO';
   const SESSION = 'shliakh:cloud-session';
   const clean = value => { const data=JSON.parse(JSON.stringify(value)); delete data.planningDrafts; delete data.meta; return data; };
-  const fingerprint = value => JSON.stringify(clean(value));
-  window.financeCloudData = {clean,fingerprint};
+  const canonical=value=>Array.isArray(value)?value.map(canonical):value&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])])):value;
+  const equal=(a,b)=>JSON.stringify(canonical(a))===JSON.stringify(canonical(b));
+  const fingerprint = value => JSON.stringify(canonical(clean(value)));
+  function merge(base,local,remote,path='',conflicts=[]){
+    if(equal(local,remote))return {value:local,conflicts};
+    if(equal(local,base))return {value:remote,conflicts};
+    if(equal(remote,base))return {value:local,conflicts};
+    const object=v=>v&&typeof v==='object'&&!Array.isArray(v);
+    if(object(local)&&object(remote)&&(base===undefined||object(base))){
+      const value={};for(const key of new Set([...Object.keys(base||{}),...Object.keys(local),...Object.keys(remote)])){const result=merge(base?.[key],local[key],remote[key],path+'/'+key,conflicts);if(result.value!==undefined)value[key]=result.value;}
+      return {value,conflicts};
+    }
+    if(Array.isArray(local)&&Array.isArray(remote)&&(base===undefined||Array.isArray(base))&&[...(base||[]),...local,...remote].every(v=>object(v)&&typeof v.id==='string')){
+      const map=arr=>Object.fromEntries((arr||[]).map(v=>[v.id,v]));const result=merge(map(base),map(local),map(remote),path,conflicts);
+      return {value:Object.values(result.value),conflicts};
+    }
+    conflicts.push(path);return {value:local,conflicts};
+  }
+  window.financeCloudData = {clean,fingerprint,merge};
   let session, user, base, choice=false, busy=false, stopped=false, timer, refreshPromise;
   window.financeCloudBusy=()=>busy||!!refreshPromise;
   try { session=JSON.parse(localStorage.getItem(SESSION)); } catch { session=null; }
@@ -45,7 +62,8 @@
   async function remote(){const rows=await api('/rest/v1/finance_snapshots?select=payload,revision,updated_at');return rows[0]||null;}
   function decision(text,exists){choice=true;decisions.hidden=false;document.getElementById('cloudDownload').hidden=!exists;say(text);}
   function validate(data){if(data?.version!==1||!Array.isArray(data.assets)||!Array.isArray(data.debts)||!Array.isArray(data.transactions))throw new Error('Невідома структура хмарної копії');}
-  function receive(row){validate(row.payload);backup();window.financeApp.apply(row.payload);remember(row.revision,fingerprint(row.payload));say('Синхронізовано • '+new Date(row.updated_at).toLocaleTimeString('uk-UA'));}
+  const conflictingDraftKeys=row=>{const local=window.financeApp.read();return Object.keys(local.planningDrafts||{}).filter(key=>!equal(local.planning?.[key],row.payload.planning?.[key]));};
+  function receive(row,discardDraftKeys=[]){validate(row.payload);backup();window.financeApp.apply(row.payload,{discardDraftKeys});remember(row.revision,fingerprint(row.payload));say('Синхронізовано • '+new Date(row.updated_at).toLocaleTimeString('uk-UA'));}
   async function write(expected) {
     const payload=clean(window.financeApp.read());
     const rows=await api('/rest/v1/rpc/save_finance_snapshot',{method:'POST',body:{p_payload:payload,p_expected_revision:expected}});
@@ -55,6 +73,7 @@
     user=await api('/auth/v1/user');
     login.hidden=true;controls.hidden=false;document.getElementById('cloudAccount').textContent=user.email;
     try{base=JSON.parse(localStorage.getItem(metaKey()));}catch{base=null;}
+    if(base?.hash){try{base.hash=fingerprint(JSON.parse(base.hash));}catch{base=null;}}
     const row=await remote();
     if(!base){decision(row?'Знайдено хмарну копію. Обери, які дані використати для першого підключення.':'Хмара порожня. Почни з пристрою, де вже є твої дані.',!!row);return;}
     stopped=false;await sync();
@@ -71,8 +90,13 @@
       const row=await remote();const hash=fingerprint(window.financeApp.read());
       if(!row){decision('Хмарної копії немає. Обери дані цього пристрою для початку.',false);return;}
       if(row.revision!==base?.revision){
-        if(Object.keys(window.financeApp.read().planningDrafts||{}).length){say('Є хмарне оновлення. Збережи або скасуй локальну чернетку перед синхронізацією.');return;}
-        if(hash!==base?.hash){decision('Є зміни на двох пристроях. Вибери копію; локальну буде зарезервовано.',true);return;}
+        if(conflictingDraftKeys(row).length){decision('Хмарний план має зміни в тих самих розділах, де є локальні чернетки. Вибери копію; чернетки буде зарезервовано.',true);return;}
+        if(hash!==base?.hash){
+          let original;try{original=JSON.parse(base.hash);}catch{decision('Потрібно вибрати початкову копію даних.',true);return;}
+          const result=merge(original,clean(window.financeApp.read()),row.payload);
+          if(result.conflicts.length){decision('Є суперечливі зміни в тих самих даних. Вибери копію; локальну буде зарезервовано.',true);return;}
+          backup();window.financeApp.apply(result.value);await write(row.revision);return;
+        }
         if(document.querySelector('dialog[open]')||document.activeElement?.matches('input,textarea,select')){say('Є оновлення з іншого пристрою • заверш редагування');return;}
         receive(row);
       } else if(hash!==base?.hash){say('Синхронізація…');await write(row.revision);}
@@ -106,7 +130,7 @@
   };
   document.getElementById('cloudDownload').onclick=async()=>{
     if(busy)return;busy=true;
-    try{const row=await remote();if(!row)throw new Error('Хмарна копія відсутня');if(!confirm('Використати хмарні дані? Поточні дані пристрою будуть збережені в локальній резервній копії.'))return;receive(row);choice=false;stopped=false;decisions.hidden=true;}
+    try{const row=await remote();if(!row)throw new Error('Хмарна копія відсутня');if(!confirm('Використати хмарні дані? Поточні дані та конфліктні чернетки будуть зарезервовані; неконфліктні чернетки залишаться.'))return;receive(row,conflictingDraftKeys(row));choice=false;stopped=false;decisions.hidden=true;}
     catch(error){say('Не завантажено: '+error.message);}finally{busy=false;}
   };
   document.getElementById('cloudSync').onclick=()=>sync();
