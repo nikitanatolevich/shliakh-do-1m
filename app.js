@@ -69,6 +69,12 @@
   });
 
   let state = load();
+  const resetPlanningView = localStorage.getItem('shliakh:test-cleanup-2026-11') !== 'done';
+  if(resetPlanningView){
+    if(window.cleanupTestDrafts(state))localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
+    sessionStorage.removeItem('shliakh:update-view');
+    localStorage.setItem('shliakh:test-cleanup-2026-11','done');
+  }
   let editor = null;
   const $ = selector => document.querySelector(selector);
   const $$ = selector => [...document.querySelectorAll(selector)];
@@ -445,7 +451,8 @@
   const initialView = window.financeAuthHash ? 'data' : location.hash.slice(1); setView(document.getElementById(`view-${initialView}`) ? initialView : 'planning');
   try {
     const restore=JSON.parse(sessionStorage.getItem('shliakh:update-view')||'null');
-    if(restore){const host=document.getElementById('planningContent');if(restore.month)host.dataset.month=restore.month;if(restore.tab)host.dataset.tab=restore.tab;sessionStorage.removeItem('shliakh:update-view');requestAnimationFrame(()=>window.scrollTo(0,restore.scroll||0));}
+    if(restore&&!resetPlanningView){const host=document.getElementById('planningContent');if(restore.month)host.dataset.month=restore.month;if(restore.tab)host.dataset.tab=restore.tab;sessionStorage.removeItem('shliakh:update-view');requestAnimationFrame(()=>window.scrollTo(0,restore.scroll||0));}
   }catch{}
+  if(resetPlanningView){document.getElementById('planningContent').dataset.month=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Kyiv'}).format(new Date()).slice(0,7);document.getElementById('planningContent').dataset.tab='ЗП';setView('planning');}
   render();
 })();
