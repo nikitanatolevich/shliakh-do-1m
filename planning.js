@@ -43,6 +43,9 @@ window.syncPlanningSavings = function(state) {
   });
   return changed;
 };
+window.cancelPlanningChanges = function(state, key) {
+  if (state.planningDrafts) delete state.planningDrafts[key];
+};
 window.savePlanning = function(state, key, draft) {
   const plan = JSON.parse(JSON.stringify(draft));
   window.prepareSavingsPlan(plan);
@@ -94,10 +97,10 @@ window.renderPlanning = function(state, persist) {
   const note = host.querySelector('article.card .fine-print');
   if (note) note.textContent = 'Перенесення відбувається тільки після «Зберегти»: факт «Заощадження» → Подушка безпеки; «На всяк випадок» та «Відпустка» → окремі активи у Planned Expenses. Факт інших категорій → журнал витрат (за минулі місяці дата — перше число місяця). Не дублюйте ці витрати вручну. Повторне збереження оновлює записи цього розділу. Внески в активи не записуються як витрати.';
   const actions = document.createElement('div'); actions.className = 'filters';
-  actions.innerHTML = '<button class="primary" id="savePlanning">Зберегти</button><span role="status">' + (state.planningDrafts[key] ? 'Чернетка — ще не перенесено' : 'Показано збережений стан') + '</span><button class="secondary" data-view-link="money">Перевірити активи та борги</button><button class="secondary" data-open="snapshot">Контроль місяця</button><button class="secondary" data-view-link="data">Резервна копія</button>';
+  actions.innerHTML = '<button class="primary" id="savePlanning">Зберегти</button><button class="secondary" id="cancelPlanning">Скасувати зміни</button><span role="status">' + (state.planningDrafts[key] ? 'Чернетка — ще не перенесено' : 'Показано збережений стан') + '</span><button class="secondary" data-view-link="money">Перевірити активи та борги</button><button class="secondary" data-open="snapshot">Контроль місяця</button><button class="secondary" data-view-link="data">Резервна копія</button>';
   host.prepend(actions);
   const commit=()=>{state.planningDrafts[key]=plan;persist();window.renderPlanning(state,persist);};
-  host.onpointerdown=e=>{if(e.target.id==='savePlanning')e.preventDefault();};
+  host.onpointerdown=e=>{if(['savePlanning','cancelPlanning'].includes(e.target.id))e.preventDefault();};
   host.onchange=e=>{
     if(e.target.id==='planningMonth'){host.dataset.month=e.target.value;window.renderPlanning(state,persist);return;}
     if(e.target.id==='planningTab'){host.dataset.tab=e.target.value;window.renderPlanning(state,persist);return;}
@@ -106,6 +109,11 @@ window.renderPlanning = function(state, persist) {
     if(e.target.dataset.row!==undefined){const f=e.target.dataset.field;plan.rows[Number(e.target.dataset.row)][f]=['planned','actual'].includes(f)?Number(e.target.value)||0:e.target.value.trim();commit();}
   };
   host.onclick=e=>{
+    if(e.target.id==='cancelPlanning'){
+      window.cancelPlanningChanges(state,key);persist();window.renderPlanning(state,persist);
+      host.querySelector('[role="status"]').textContent = 'Зміни скасовано. Показано останній збережений план.';
+      host.querySelector('#cancelPlanning').focus();return;
+    }
     if(e.target.id==='savePlanning'){
       const inputs=[...host.querySelectorAll('input,select')];
       for(const input of inputs){if(!input.checkValidity()){input.reportValidity();return;}}
