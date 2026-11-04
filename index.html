@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0a3029">
+  <meta name="description" content="Приватний локальний фінансовий трекер шляху до 1 000 000 ₴">
+  <title>Шлях до 1 000 000 ₴</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="planning.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">До основного вмісту</a>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">₴</span>
+      <div><strong>Шлях до 1 000 000 ₴</strong><small>особистий фінансовий навігатор</small></div>
+    </div>
+    <div class="header-actions">
+      <span id="saveStatus" class="save-status" role="status">Збережено локально</span>
+      <button class="icon-button" id="themeToggle" type="button" aria-label="Змінити тему">◐</button>
+    </div>
+  </header>
+
+  <nav class="main-nav" aria-label="Розділи застосунку">
+    <button data-view="dashboard" class="active"><span>Огляд</span></button>
+    <button data-view="money"><span>Гроші</span></button>
+    <button data-view="funds"><span>Фонди</span></button>
+    <button data-view="monthly"><span>Місяці</span></button>
+    <button data-view="business"><span>North &amp; Intent</span></button>
+    <button data-view="planning"><span>Планування</span></button>
+    <button data-view="plan"><span>Цілі й прогноз</span></button>
+    <button data-view="data"><span>Дані</span></button>
+  </nav>
+
+  <main id="main" tabindex="-1">
+    <section id="view-dashboard" class="view active" aria-labelledby="dashboard-title">
+      <div class="hero">
+        <div>
+          <p class="eyebrow">Фінансова опора, а не гонитва</p>
+          <h1 id="dashboard-title">Ваш капітал — це перевірені активи мінус усі борги</h1>
+          <p id="netWorthNote" class="hero-note"></p>
+        </div>
+        <button type="button" class="primary" data-open="snapshot">Зберегти контроль місяця</button>
+      </div>
+
+      <div class="metric-grid">
+        <article class="metric featured"><span>Чистий капітал</span><strong id="netWorth">—</strong><small id="netWorthSub"></small></article>
+        <article class="metric"><span>Відомі активи</span><strong id="assetTotal">0 ₴</strong><small id="assetVerify"></small></article>
+        <article class="metric"><span>Борги</span><strong id="debtTotal">—</strong><small id="debtVerify"></small></article>
+        <article class="metric"><span>До цілі</span><strong id="progressPct">—</strong><small id="progressAmount"></small></article>
+      </div>
+
+      <article class="progress-card card">
+        <div class="card-heading"><div><p class="eyebrow">Маршрут</p><h2>Фінансові рівні</h2></div><span id="currentLevel" class="pill"></span></div>
+        <div class="progress-track" aria-label="Прогрес до одного мільйона"><div id="progressBar"></div></div>
+        <div id="levelMarkers" class="level-markers"></div>
+      </article>
+
+      <div class="two-col">
+        <article class="card"><div class="card-heading"><div><p class="eyebrow">Структура</p><h2>Чотири кошики</h2></div><button class="text-button" data-view-link="money">Редагувати</button></div><div id="bucketCards" class="bucket-list"></div></article>
+        <article class="card"><div class="card-heading"><div><p class="eyebrow">Динаміка</p><h2>Історія капіталу</h2></div><span class="muted">за контрольними точками</span></div><canvas id="netWorthChart" height="210" role="img" aria-label="Графік чистого капіталу"></canvas><p id="chartEmpty" class="empty"></p></article>
+      </div>
+
+      <div class="two-col">
+        <article class="card"><div class="card-heading"><div><p class="eyebrow">Цей місяць</p><h2>План / факт</h2></div><button class="text-button" data-view-link="plan">Налаштувати</button></div><div id="planFact"></div></article>
+        <article class="card alert-card" id="attentionCard"><div class="card-heading"><div><p class="eyebrow">Увага</p><h2>Що потребує дії</h2></div></div><ul id="attentionList" class="clean-list"></ul></article>
+      </div>
+    </section>
+
+    <section id="view-money" class="view" aria-labelledby="money-title">
+      <div class="section-title"><div><p class="eyebrow">Баланс</p><h1 id="money-title">Активи та борги</h1><p>Транзакції показують рух грошей, а залишки активів і боргів оновлюються окремо під час звірки.</p></div></div>
+      <div class="two-col">
+        <article class="card"><div class="card-heading"><h2>Активи</h2><button class="primary small" data-open="asset">+ Актив</button></div><div id="assetsTable"></div></article>
+        <article class="card"><div class="card-heading"><h2>Борги</h2><button class="primary small" data-open="debt">+ Борг</button></div><label class="confirm-row"><input type="checkbox" id="debtsConfirmed"> Я перевірив/ла всі борги, список повний</label><div id="debtsTable"></div></article>
+      </div>
+      <article class="card"><div class="card-heading"><div><p class="eyebrow">Журнал</p><h2>Транзакції</h2></div><button class="primary small" data-open="transaction">+ Транзакція</button></div><div class="filters"><label>Місяць <input id="transactionMonth" type="month"></label><label>Тип <select id="transactionType"><option value="">Усі</option><option value="income">Доходи</option><option value="expense">Витрати</option><option value="transfer">Перекази</option></select></label></div><div id="transactionsTable"></div></article>
+    </section>
+
+    <section id="view-funds" class="view" aria-labelledby="funds-title">
+      <div class="section-title"><div><p class="eyebrow">Planned Expenses</p><h1 id="funds-title">Sinking funds</h1><p>Накопичуйте на передбачувані витрати без удару по подушці.</p></div><button class="primary" data-open="fund">+ Новий фонд</button></div>
+      <div id="fundGrid" class="card-grid"></div>
+      <article class="card"><div class="card-heading"><div><p class="eyebrow">Контекст</p><h2>Історичні плани</h2></div><span class="pill neutral">не додаються у витрати</span></div><p class="muted">Ці події збережені лише як історичний контекст. Додавайте фактичні витрати вручну, якщо вони справді відбулися.</p><div id="historyEvents" class="timeline"></div></article>
+    </section>
+
+    <section id="view-monthly" class="view" aria-labelledby="monthly-title">
+      <div class="section-title"><div><p class="eyebrow">Щомісячний ритуал</p><h1 id="monthly-title">Контрольні точки</h1><p>Зафіксуйте стан після звірки активів і боргів — так графік порівнює однакові дані.</p></div><button class="primary" data-open="snapshot">+ Контроль місяця</button></div>
+      <div id="monthComparison" class="metric-grid compact"></div>
+      <article class="card"><div class="card-heading"><h2>Історія місяців</h2></div><div id="snapshotsTable"></div></article>
+    </section>
+
+    <section id="view-business" class="view" aria-labelledby="business-title">
+      <div class="section-title"><div><p class="eyebrow">Цифровий бізнес</p><h1 id="business-title">North &amp; Intent</h1><p>Вимірюйте попит, воронку й оплачений результат — окремо від особистого капіталу.</p></div><button class="primary" data-open="business">+ Дані місяця</button></div>
+      <article class="progress-card card"><div class="card-heading"><div><p class="eyebrow">Поточний етап</p><h2 id="businessLevel"></h2></div><span id="businessRevenue" class="pill"></span></div><div id="businessMarkers" class="level-markers business-markers"></div></article>
+      <div class="two-col"><article class="card"><div class="card-heading"><h2>Останній місяць</h2></div><div id="businessMetrics" class="mini-metrics"></div></article><article class="card"><div class="card-heading"><h2>Воронка</h2></div><canvas id="businessChart" height="210" role="img" aria-label="Графік показників бізнесу"></canvas></article></div>
+      <article class="card"><div class="card-heading"><h2>Історія показників</h2></div><div id="businessTable"></div></article>
+    </section>
+
+    <section id="view-plan" class="view" aria-labelledby="plan-title">
+      <div class="section-title"><div><p class="eyebrow">Фокус</p><h1 id="plan-title">План місяця</h1><p>Три пріоритети, контроль ризиків і чесний прогноз без обіцянок дохідності.</p></div></div>
+      <div class="two-col">
+        <article class="card"><div class="card-heading"><h2>План / факт</h2></div><form id="monthlyPlanForm" class="stack-form"><label>План доходу, ₴<input name="incomeTarget" type="number" min="0" step="100"></label><label>Ліміт витрат, ₴<input name="expenseLimit" type="number" min="0" step="100"></label><label>Ціль заощаджень, ₴<input name="savingsTarget" type="number" min="0" step="100"></label><button class="primary" type="submit">Зберегти план</button></form></article>
+        <article class="card"><div class="card-heading"><h2>Прогноз до 1 млн</h2></div><form id="forecastForm" class="stack-form"><label>Щомісячний внесок, ₴<input name="monthlyContribution" type="number" min="0" step="100"></label><label>Обережна дохідність, % річних<input name="conservativeRate" type="number" min="0" max="50" step="0.1"></label><label>Базова дохідність, % річних<input name="baseRate" type="number" min="0" max="50" step="0.1"></label><label>Оптимістична дохідність, % річних<input name="optimisticRate" type="number" min="0" max="50" step="0.1"></label><button class="primary" type="submit">Оновити прогноз</button></form><div id="forecastResults" class="scenario-list"></div><p class="fine-print">⚠ Прогноз математичний, не гарантує дохідності й не враховує податки, комісії та зміну доходу. 1 000 000 ₴ у майбутньому матиме меншу купівельну спроможність через інфляцію.</p></article>
+      </div>
+      <div class="three-col"><article class="card"><div class="card-heading"><h2>Три пріоритети</h2></div><div id="priorities"></div></article><article class="card"><div class="card-heading"><h2>Цілі місяця</h2><button class="text-button" data-add-list="goals">+ Додати</button></div><div id="goals"></div></article><article class="card"><div class="card-heading"><h2>Ризики</h2><button class="text-button" data-add-list="risks">+ Додати</button></div><div id="risks"></div></article></div>
+      <article class="card"><div class="card-heading"><h2>Чекліст місячного контролю</h2></div><div id="checklist" class="check-grid"></div></article>
+    </section>
+
+    <section id="view-data" class="view" aria-labelledby="data-title">
+      <div class="section-title"><div><p class="eyebrow">Приватність і резервні копії</p><h1 id="data-title">Ваші дані залишаються у браузері</h1><p>Немає акаунта, сервера, аналітики чи секретів. Для перенесення між пристроями потрібен JSON-файл.</p></div></div>
+      <div class="card-grid data-grid">
+        <article class="card"><h2>Експорт</h2><p>Завантажте повну резервну копію. Зберігайте її у приватному місці.</p><button id="exportBtn" class="primary">Завантажити JSON</button></article>
+        <article class="card"><h2>Імпорт</h2><p>Імпорт замінить поточні локальні дані після підтвердження.</p><label class="file-button">Обрати JSON<input id="importInput" type="file" accept="application/json,.json"></label></article>
+        <article class="card"><h2>Друкований звіт</h2><p>Сформуйте стислий звіт поточного стану для PDF або друку.</p><button id="printBtn" class="secondary">Друкувати звіт</button></article>
+        <article class="card danger-zone"><h2>Почати заново</h2><p>Скидання видалить усі локальні зміни на цьому пристрої.</p><button id="resetBtn" class="danger">Скинути дані</button></article>
+      </div>
+      <article class="card privacy"><h2>Важливо перед GitHub Pages</h2><p>Публічна версія починається з порожнього балансу. Ваші записи зберігаються у localStorage браузера і не потрапляють у GitHub. Не додавайте експортований JSON у публічний репозиторій.</p></article>
+    </section>
+    <section id="view-planning" class="view" aria-labelledby="planning-title"><div class="section-title"><div><p class="eyebrow">Помісячний бюджет</p><h1 id="planning-title">Планування</h1><p>Статті, категорії, план, факт і залишок.</p></div></div><div id="planningContent"></div></section>
+  </main>
+
+  <footer><span>Шлях до 1 000 000 ₴</span><span>Локально • приватно • без бекенду</span></footer>
+
+  <dialog id="editorDialog" aria-labelledby="dialogTitle"><form id="editorForm" method="dialog"><div class="dialog-head"><h2 id="dialogTitle">Редагування</h2><button type="button" class="icon-button" data-close aria-label="Закрити">×</button></div><div id="dialogFields" class="stack-form"></div><div class="dialog-actions"><button type="button" class="secondary" data-close>Скасувати</button><button type="submit" class="primary">Зберегти</button></div></form></dialog>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script src="planning.js" defer></script>
+  <script src="app.js" defer></script>
+</body>
+</html>
