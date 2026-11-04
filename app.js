@@ -88,6 +88,7 @@
   function save(message = 'Збережено локально') {
     state.meta.updatedAt = new Date().toISOString();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    window.dispatchEvent(new Event('finance-change'));
     $('#saveStatus').textContent = message;
     setTimeout(() => { $('#saveStatus').textContent = 'Збережено локально'; }, 1600);
   }
@@ -397,7 +398,7 @@
     try {
       const parsed = JSON.parse(await file.text());
       if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.assets) || !Array.isArray(parsed.debts)) throw new Error('Невідома структура');
-      if (!confirm('Замінити поточні локальні дані імпортованою копією?')) return;
+      if (!confirm('Замінити поточні дані імпортованою копією? Якщо увімкнено хмару, зміна також синхронізується.')) return;
       state = { ...defaults(), ...parsed, meta: { ...defaults().meta, ...parsed.meta } }; save('Імпорт завершено'); render(); toast('Дані успішно імпортовано');
     } catch (error) { toast('Не вдалося імпортувати: перевірте JSON-файл'); }
   }
@@ -427,11 +428,20 @@
   $('#exportBtn').addEventListener('click', exportData);
   $('#importInput').addEventListener('change', event => { if (event.target.files[0]) importData(event.target.files[0]); event.target.value = ''; });
   $('#printBtn').addEventListener('click', () => { setView('dashboard'); setTimeout(() => window.print(), 100); });
-  $('#resetBtn').addEventListener('click', () => { if (confirm('Справді видалити всі локальні зміни й повернути стартові дані?')) { localStorage.removeItem(STORAGE_KEY); state = defaults(); save(); render(); toast('Повернуто стартові дані'); } });
+  $('#resetBtn').addEventListener('click', () => { if (confirm('Скинути дані до початкових? Якщо увімкнено синхронізацію, це також замінить хмарні дані. Спершу збережіть JSON-копію.')) { localStorage.removeItem(STORAGE_KEY); state = defaults(); save(); render(); toast('Повернуто стартові дані'); } });
   $('#themeToggle').addEventListener('click', () => { state.meta.theme = state.meta.theme === 'dark' ? 'light' : 'dark'; save(); render(); });
   window.addEventListener('resize', () => { clearTimeout(window.__chartTimer); window.__chartTimer = setTimeout(() => { drawNetChart(); drawBusinessChart(); }, 150); });
 
-  const initialView = location.hash.slice(1); setView($(`#view-${initialView}`) ? initialView : 'planning');
+  window.financeApp = {
+    read: () => JSON.parse(JSON.stringify(state)),
+    apply: data => {
+      const drafts=state.planningDrafts || {}, theme=state.meta.theme;
+      state={...defaults(),...data,planningDrafts:drafts,meta:{updatedAt:new Date().toISOString(),theme}};
+      localStorage.setItem(STORAGE_KEY,JSON.stringify(state));render();
+    }
+  };
+  if (location.hash.includes('access_token=')) window.financeAuthHash=location.hash;
+  const initialView = window.financeAuthHash ? 'data' : location.hash.slice(1); setView(document.getElementById(`view-${initialView}`) ? initialView : 'planning');
   render();
   if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('./sw.js').catch(error => console.warn('Service worker недоступний', error));
 })();
