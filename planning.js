@@ -130,6 +130,11 @@ window.renderPlanning = function(state, persist) {
     const description=host.querySelector('.card .fine-print');if(description)description.textContent=`План заощаджень: ${fmt(plan.income*plan.reserve/100)} — включений у статтю «Заощадження». В активи потрапляє тільки збережений факт.`;
   };
   host.onpointerdown=e=>{if(['savePlanning','cancelPlanning'].includes(e.target.id))e.preventDefault();};
+  host.oninput=e=>{
+    if(e.target.dataset.row!==undefined&&['name','payer','note'].includes(e.target.dataset.field)){
+      plan.rows[Number(e.target.dataset.row)][e.target.dataset.field]=e.target.value;commit(false);
+    }
+  };
   host.onchange=e=>{
     if(e.target.id==='planningMonth'){host.dataset.month=e.target.value;window.renderPlanning(state,persist);return;}
     if(e.target.id==='planningTab'){host.dataset.tab=e.target.value;window.renderPlanning(state,persist);return;}
