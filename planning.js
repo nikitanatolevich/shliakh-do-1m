@@ -43,6 +43,26 @@ window.syncPlanningSavings = function(state) {
   });
   return changed;
 };
+window.capturePlanningDraft = function(state, host=document.getElementById('planningContent')) {
+  if(!host)return;
+  const month=host.querySelector('#planningMonth')?.value,tab=host.querySelector('#planningTab')?.value;
+  if(!month||!tab)return;
+  const key=`${month}:${tab}`;
+  const original=state.planningDrafts?.[key]||state.planning?.[key]||{income:0,reserve:0,rows:[]};
+  const draft=JSON.parse(JSON.stringify(original));
+  host.querySelectorAll('[data-plan],[data-row][data-field]').forEach(input=>{
+    if(input.disabled)return;
+    const initial=input.tagName==='SELECT' ? ([...input.options].find(option=>option.defaultSelected)||input.options[0])?.value : input.defaultValue;
+    if(input.value===initial)return;
+    const field=input.dataset.field;
+    if(input.dataset.plan){const value=Number(input.value);if(Number.isFinite(value)&&value>=0)draft[input.dataset.plan]=value;}
+    else if(draft.rows[Number(input.dataset.row)]){
+      if(['planned','actual'].includes(field)){const value=Number(input.value);if(Number.isFinite(value)&&value>=0)draft.rows[Number(input.dataset.row)][field]=value;}
+      else draft.rows[Number(input.dataset.row)][field]=input.value.trim();
+    }
+  });
+  if(JSON.stringify(draft)!==JSON.stringify(original)){state.planningDrafts||={};state.planningDrafts[key]=draft;}
+};
 window.cancelPlanningChanges = function(state, key) {
   if (state.planningDrafts) delete state.planningDrafts[key];
 };
