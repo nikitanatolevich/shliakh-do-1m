@@ -19,22 +19,29 @@ window.planningTotals = function(plan) {
   const actual = plan.rows.reduce((s,r)=>s+(Number(r.actual)||0),0);
   return {planned,actual,remainingPlan:plan.income-planned,remainingActual:plan.income-actual};
 };
+window.planningAssetRoutes = [
+  {category:'Заощадження',id:'planning-savings',name:'Подушка безпеки з планування',bucket:'emergency'},
+  {category:'На всяк випадок',id:'planning-contingency',name:'На всяк випадок з планування',bucket:'planned'},
+  {category:'Відпустка',id:'planning-vacation',name:'Відпустка з планування',bucket:'planned'}
+];
 window.syncPlanningSavings = function(state) {
   const before = JSON.stringify(state.planning || {});
   Object.values(state.planning || {}).forEach(window.prepareSavingsPlan);
-  const changed = before !== JSON.stringify(state.planning || {});
-  const id = 'planning-savings';
-  let amount = 0;
-  Object.values(state.planning || {}).forEach(plan => (plan.rows || []).forEach(row => {
-    if (String(row.category).trim().toLowerCase() === 'заощадження') amount += Math.max(0, Number(row.actual) || 0);
-  }));
-  amount = Math.round(amount * 100) / 100;
-  const asset = state.assets.find(a => a.id === id);
-  if (amount === 0) { if (!asset) return changed; state.assets = state.assets.filter(a => a.id !== id); return true; }
-  if (asset && asset.amount === amount) return changed;
-  const next = {id, name:'Заощадження з планування', amount, bucket:'capital', verified:false, source:'planning'};
-  if (asset) Object.assign(asset,next); else state.assets.push(next);
-  return true;
+  let changed = before !== JSON.stringify(state.planning || {});
+  window.planningAssetRoutes.forEach(route => {
+    let amount = 0;
+    Object.values(state.planning || {}).forEach(plan => (plan.rows || []).forEach(row => {
+      if (String(row.category).trim().toLowerCase() === route.category.toLowerCase()) amount += Math.max(0, Number(row.actual) || 0);
+    }));
+    amount = Math.round(amount * 100) / 100;
+    const asset = state.assets.find(a => a.id === route.id);
+    if (amount === 0) { if (asset) {state.assets = state.assets.filter(a => a.id !== route.id);changed=true;} return; }
+    if (asset && asset.amount === amount && asset.bucket === route.bucket && asset.name === route.name) return;
+    const next = {id:route.id, name:route.name, amount, bucket:route.bucket, verified:false, source:'planning'};
+    if (asset) Object.assign(asset,next); else state.assets.push(next);
+    changed = true;
+  });
+  return changed;
 };
 window.renderPlanning = function(state, persist) {
   const host = document.getElementById('planningContent');
@@ -68,7 +75,7 @@ window.renderPlanning = function(state, persist) {
     }
   });
   const note = host.querySelector('article.card .fine-print');
-  if (note) note.textContent = 'Факт у категорії «Заощадження» автоматично формує актив «Заощадження з планування» у кошику Capital. Зміна суми, категорії або видалення рядка перераховує актив. Не додавайте ці самі внески вручну в активи. Інші категорії не змінюють активів. Не дублюйте одну оплату в різних розділах.';
+  if (note) note.textContent = 'Лише факт формує активи: «Заощадження» → Подушка безпеки (Emergency Fund); «На всяк випадок» та «Відпустка» → окремі активи у Planned Expenses. Зміна факту, категорії або видалення рядка перераховує відповідний актив. Не додавайте ці самі гроші вручну повторно. Інші категорії не змінюють активів.';
   const actions = document.createElement('div'); actions.className = 'filters';
   actions.innerHTML = '<button class="secondary" data-view-link="money">Перевірити активи та борги</button><button class="secondary" data-open="snapshot">Контроль місяця</button><button class="secondary" data-view-link="data">Резервна копія</button>';
   host.prepend(actions);
