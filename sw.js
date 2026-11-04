@@ -5,8 +5,7 @@ const ASSETS=['./index.html','./styles.css','./planning.css?v=10','./cloud.css?v
 self.addEventListener('install',event=>event.waitUntil((async()=>{
   const cache=await caches.open(CACHE);
   await cache.addAll(ASSETS.map(path=>new Request(new URL(path,self.registration.scope),{cache:'reload'})));
-  // A first installation has no old open app to protect.
-  if(!(await self.clients.matchAll({type:'window',includeUncontrolled:false})).length)await self.skipWaiting();
+  // First installations activate normally; updates wait for the safe page signal.
 })()));
 self.addEventListener('message',event=>{if(event.data?.type==='ACTIVATE_UPDATE')event.waitUntil(self.skipWaiting());});
 self.addEventListener('activate',event=>event.waitUntil((async()=>{
