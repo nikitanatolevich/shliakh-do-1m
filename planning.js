@@ -121,15 +121,30 @@ window.renderPlanning = function(state, persist) {
     input.replaceWith(select);
   });
   host.querySelectorAll('[data-row]').forEach(input => {
+    if(input.type==='number'){input.inputMode='decimal';input.enterKeyHint='done';}
+    if(input.dataset.field==='name')input.placeholder='Наприклад, оренда або пальне';
+    if(input.dataset.field==='note')input.placeholder='Необов’язково';
     if (plan.rows[Number(input.dataset.row)]?.percentSavings && ['category','planned'].includes(input.dataset.field)) {
       input.disabled = true; input.title = 'План цієї статті задається відсотком від бюджету';
     }
   });
+  const labels=['Стаття','Категорія','План, ₴','Факт, ₴','Залишок плану','% бюджету','Ким оплачено','Примітки',''];
+  host.querySelectorAll('tbody tr').forEach((tr,i)=>{
+    [...tr.cells].forEach((cell,j)=>cell.dataset.label=j===0?`Стаття ${i+1}`:labels[j]);
+    const cell=document.createElement('td');cell.className='mobile-row-tools';
+    cell.innerHTML=`<button type="button" class="text-button" data-row-details="${i}" aria-expanded="false">Деталі та примітки <span aria-hidden="true">⌄</span></button>`;
+    tr.append(cell);
+  });
   const note = host.querySelector('article.card .fine-print');
   if (note) note.textContent = 'Перенесення відбувається тільки після «Зберегти»: факт «Заощадження» → Подушка безпеки; «На всяк випадок» та «Відпустка» → окремі активи у Planned Expenses. Факт інших категорій → журнал витрат (за минулі місяці дата — перше число місяця). Не дублюйте ці витрати вручну. Повторне збереження оновлює записи цього розділу. Внески в активи не записуються як витрати.';
-  const actions = document.createElement('div'); actions.className = 'filters';
+  const actions = document.createElement('div'); actions.className = 'filters planning-actions';
   actions.innerHTML = '<button class="primary" id="savePlanning">Зберегти</button><button class="secondary" id="cancelPlanning">Скасувати зміни</button><span role="status">' + (state.planningDrafts[key] ? 'Чернетка — ще не перенесено' : 'Показано збережений стан') + '</span><button class="secondary" data-view-link="money">Перевірити активи та борги</button><button class="secondary" data-open="snapshot">Контроль місяця</button><button class="secondary" data-view-link="data">Резервна копія</button>';
   host.prepend(actions);
+  const tools=document.createElement('details');tools.className='planning-tools';tools.innerHTML='<summary>Інші дії</summary><div class="filters"></div>';
+  actions.querySelectorAll('[data-view-link],[data-open]').forEach(button=>tools.querySelector('div').append(button));
+  actions.after(tools);
+  host.querySelector('.table-wrap').classList.add('planning-entries');
+  if(note){const help=document.createElement('details');help.className='planning-help';help.innerHTML='<summary>Як працює перенесення коштів</summary>';note.before(help);help.append(note);}
   const commit=(redraw=true)=>{
     state.planningDrafts[key]=plan;persist('draft');
     if(redraw){window.renderPlanning(state,persist);return;}
@@ -154,6 +169,8 @@ window.renderPlanning = function(state, persist) {
     if(e.target.dataset.row!==undefined){const f=e.target.dataset.field;plan.rows[Number(e.target.dataset.row)][f]=['planned','actual'].includes(f)?Number(e.target.value)||0:e.target.value.trim();commit(false);}
   };
   host.onclick=e=>{
+    const detailsButton=e.target.closest('[data-row-details]');
+    if(detailsButton){const row=detailsButton.closest('tr');const expanded=row.classList.toggle('details-open');detailsButton.setAttribute('aria-expanded',String(expanded));return;}
     if(e.target.id==='cancelPlanning'){
       window.cancelPlanningChanges(state,key);persist();window.renderPlanning(state,persist);
       host.querySelector('[role="status"]').textContent = 'Зміни скасовано. Показано останній збережений план.';
@@ -168,7 +185,7 @@ window.renderPlanning = function(state, persist) {
       host.querySelector('[role="status"]').textContent='Збережено. Фактичні суми перенесено в активи та витрати.';
       host.querySelector('#savePlanning').focus();return;
     }
-    if(e.target.id==='addPlanningRow'){plan.rows.push({name:'Нова стаття',category:'',planned:0,actual:0,payer:'',note:''});commit();}
+    if(e.target.id==='addPlanningRow'){plan.rows.push({name:'',category:'',planned:0,actual:0,payer:'',note:''});commit();const field=host.querySelector(`input[data-row="${plan.rows.length-1}"][data-field="name"]`);field?.focus();field?.scrollIntoView({block:'center',behavior:'smooth'});}
     if(e.target.dataset.removePlan!==undefined){const index=Number(e.target.dataset.removePlan);if(plan.rows[index].percentSavings){alert('Ця стаття пов’язана з відсотком. Щоб прибрати план, встановіть 0%. Фактичний внесок збережеться.');return;}if(confirm('Видалити статтю плану?')){plan.rows.splice(index,1);commit();}}
     if(e.target.id==='copyPlanning'){
       const date=new Date(`${month}-01T12:00:00`);date.setMonth(date.getMonth()-1);const prev=`${date.toLocaleDateString('sv-SE').slice(0,7)}:${tab}`;
