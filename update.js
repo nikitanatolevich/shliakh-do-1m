@@ -7,12 +7,14 @@
   const initialController=navigator.serviceWorker?.controller;
   const safe=()=>!document.hidden&&!document.querySelector('dialog[open]')&&!document.activeElement?.matches('input,textarea,select')&&!dirtyForms.size&&!window.financeCloudBusy?.();
   function restorePoint(){
-    sessionStorage.setItem('shliakh:update-view',JSON.stringify({month:document.getElementById('planningContent')?.dataset.month,tab:document.getElementById('planningContent')?.dataset.tab,scroll:window.scrollY}));
+    window.financeApp?.checkpoint();
+    sessionStorage.setItem('shliakh:update-view',JSON.stringify({month:document.getElementById('planningMonth')?.value||document.getElementById('planningContent')?.dataset.month,tab:document.getElementById('planningTab')?.value||document.getElementById('planningContent')?.dataset.tab,scroll:window.scrollY}));
   }
   function apply(){
     if(!pending||reloading)return;
     if(!safe()){notice.hidden=false;notice.textContent='Оновлення готове — буде застосовано після завершення редагування.';return;}
-    restorePoint();notice.hidden=false;notice.textContent='Оновлюю застосунок…';
+    try{restorePoint();}catch{notice.hidden=false;notice.textContent='Не вдалося зберегти чернетку. Оновлення відкладено; створіть JSON-копію.';return;}
+    notice.hidden=false;notice.textContent='Оновлюю застосунок…';
     if(registration?.waiting){registration.waiting.postMessage({type:'ACTIVATE_UPDATE'});return;}
     if(activated||!('serviceWorker' in navigator)){reloading=true;location.reload();}
   }
@@ -36,6 +38,7 @@
   document.addEventListener('click',()=>setTimeout(apply,100));
   document.addEventListener('visibilitychange',()=>{if(!document.hidden){check();apply();}});
   window.addEventListener('online',check);
+  window.addEventListener('pagehide',()=>{try{restorePoint();}catch{}});
   if('serviceWorker' in navigator&&location.protocol!=='file:'){
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(initialController||pending){activated=true;pending=true;apply();}
