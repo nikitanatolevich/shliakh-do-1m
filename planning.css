@@ -2,6 +2,7 @@
 .planning-table select{width:170px;padding:9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font:inherit}
 .mobile-row-tools{display:none}.planning-tools{margin:0 0 18px}.planning-tools summary,.planning-help summary{cursor:pointer;color:var(--brand);font-weight:700;padding:10px 0}.planning-tools .filters{margin-top:12px}.planning-help{margin-top:16px}.planning-actions{flex-wrap:wrap}.planning-actions [role=status]{flex:1;font-size:.82rem;color:var(--muted)}
 @media(max-width:700px){
+  .main-nav{scrollbar-width:none;-webkit-overflow-scrolling:touch}.main-nav::-webkit-scrollbar{display:none}
   #view-planning{padding-bottom:140px}#view-planning .section-title{margin-bottom:18px}#view-planning .section-title h1{font-size:2.1rem}
   #planningContent>.filters{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}#planningContent>.filters>button{grid-column:1/-1}
   #planningContent input,#planningContent select{font-size:16px!important;min-height:48px;max-width:100%;min-width:0}#planningContent input[type=month]{width:100%}
