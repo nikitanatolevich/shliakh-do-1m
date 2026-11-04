@@ -127,7 +127,7 @@
     if (window.syncPlanningSavings(state)) save();
     document.documentElement.dataset.theme = state.meta.theme || 'light';
     renderDashboard(); renderMoney(); renderFunds(); renderMonthly(); renderBusiness(); renderPlan();
-    window.renderPlanning(state, () => { window.syncPlanningSavings(state); save(); render(); });
+    window.renderPlanning(state, mode => { if (mode === 'draft') { save(); return; } window.syncPlanningSavings(state); save(); render(); });
   }
 
   function renderDashboard() {
