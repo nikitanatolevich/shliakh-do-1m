@@ -115,10 +115,55 @@ window.renderPlanning = function(state, persist) {
   const plan = JSON.parse(JSON.stringify(state.planningDrafts[key] || state.planning[key] || {income:0,reserve:0,rows:[]}));
   const {planned,actual,remainingPlan,remainingActual}=window.planningTotals(plan);
   const reserved=plan.income*plan.reserve/100;
-  host.innerHTML = `<div class="filters"><label>Місяць<input id="planningMonth" type="month" value="${month}"></label><label>Розділ<select id="planningTab">${tabs.map(t=>`<option ${t===tab?'selected':''}>${t}</option>`).join('')}</select></label><button type="button" class="secondary" id="copyPlanning">Копіювати попередній місяць</button></div>
+  host.innerHTML = `<div class="filters"><label>Місяць<input id="planningMonth" type="month" value="${month}"></label><label>Розділ<select id="planningTab">${tabs.map(t=>`<option ${t===tab?'selected':''}>${t}</option>`).join('')}</select></label><button type="button" class="secondary" id="copyPlanning">Копіювати попередній місяць</button><button type="button" class="secondary" id="copyPlanningFrom">Копіювати з…</button></div>
   <div class="card"><div class="two-col"><label class="stack-form">Доступний бюджет, ₴<input type="number" min="0" step="0.01" data-plan="income" value="${plan.income}"></label><label class="stack-form">План заощаджень від бюджету, %<input type="number" min="0" max="100" step="0.1" data-plan="reserve" value="${plan.reserve}"></label></div><p class="fine-print">План заощаджень: ${fmt(reserved)} — уже включений у статтю «Заощадження». Окремого віднімання резерву немає. В активи потрапляє тільки факт.</p></div>
   <div class="metric-grid"><article class="metric"><span>План розподілу (із заощадженнями)</span><strong>${fmt(planned)}</strong></article><article class="metric"><span>Факт розподілу (із заощадженнями)</span><strong>${fmt(actual)}</strong></article><article class="metric"><span>Залишок за планом</span><strong>${fmt(remainingPlan)}</strong></article><article class="metric"><span>Залишок за фактом</span><strong>${fmt(remainingActual)}</strong></article></div>
   <article class="card"><div class="card-heading"><h2>${escape(tab)} · ${month}</h2><button class="primary small" id="addPlanningRow">+ Стаття</button></div><div class="table-wrap"><table class="data-table planning-table"><thead><tr><th>Стаття</th><th>Категорія</th><th>План, ₴</th><th>Факт, ₴</th><th>Відхилення</th><th>% бюджету</th><th>Ким оплачено</th><th>Примітки</th><th></th></tr></thead><tbody>${plan.rows.map((r,i)=>`<tr>${['name','category','planned','actual'].map(f=>`<td><input aria-label="${{name:'Стаття',category:'Категорія',planned:'План',actual:'Факт'}[f]} ${i+1}" data-row="${i}" data-field="${f}" type="${['planned','actual'].includes(f)?'number':'text'}" ${['planned','actual'].includes(f)?'min="0" step="0.01"':''} value="${escape(r[f])}"></td>`).join('')}<td>${fmt(r.planned-r.actual)}</td><td>${plan.income?(r.planned/plan.income*100).toFixed(1):'—'}%</td>${['payer','note'].map(f=>`<td><input aria-label="${f==='payer'?'Ким оплачено':'Примітки'} ${i+1}" data-row="${i}" data-field="${f}" value="${escape(r[f])}"></td>`).join('')}<td><button class="text-button" data-remove-plan="${i}" aria-label="Видалити статтю ${i+1}">×</button></td></tr>`).join('')}</tbody><tfoot><tr><th colspan="2">Разом</th><th>${fmt(planned)}</th><th>${fmt(actual)}</th><th>${fmt(planned-actual)}</th><th colspan="4"></th></tr></tfoot></table></div>${!plan.rows.length?'<p class="empty">Додайте першу статтю плану. Приватні значення з Google-таблиці не завантажуються автоматично.</p>':''}<p class="fine-print">Додатне відхилення = витрачено менше плану. Факт тут вводиться вручну; він не створює транзакцій і не змінює активи. Розділи — окремі бюджети: не підсумовуйте аудит із тими самими статтями ЗП повторно.</p></article>`;
+  // Режим копіювання працює лише з уже збереженими планами, без фактів.
+  const copyDialog = document.createElement('dialog');
+  copyDialog.id = 'copyPlanningDialog';
+  copyDialog.className = 'planning-copy-dialog';
+  const suggestedTab = tabs.find(t => t !== tab) || tabs[0];
+  copyDialog.innerHTML = '<form method="dialog" class="planning-copy-body">'
+    + '<div class="dialog-head"><h2>Копіювати статті з…</h2><button type="submit" class="icon-button" aria-label="Закрити">×</button></div>'
+    + '<p class="fine-print">Можна копіювати між ЗП, Винагородою, Аудитом і Відпусткою за будь-який місяць. Переносяться назви, категорії, планові суми й примітки. Факт і «Ким оплачено» не копіюються. Зміни залишаться чернеткою до натискання «Зберегти».</p>'
+    + '<div class="planning-copy-grid"><label>Місяць джерела<input id="copySourceMonth" type="month" value="' + escape(month) + '"></label>'
+    + '<label>Розділ джерела<select id="copySourceTab">' + tabs.map(t => '<option value="' + escape(t) + '"' + (t === suggestedTab ? ' selected' : '') + '>' + escape(t) + '</option>').join('') + '</select></label></div>'
+    + '<div class="planning-copy-grid"><label>Режим копіювання<select id="copyMode"><option value="merge">Додати відсутні статті</option><option value="replace">Замінити всі статті вибраними</option></select></label>'
+    + '<label class="planning-copy-include"><input id="copyBudgetFields" type="checkbox"> Також перенести бюджет і відсоток заощаджень</label></div>'
+    + '<div class="planning-copy-rows-title"><strong>Статті для копіювання</strong><span class="muted">Зніми галочки з непотрібних</span></div>'
+    + '<div id="copySourceRows" class="planning-copy-rows"></div>'
+    + '<p id="copySourceFeedback" class="fine-print" role="status" aria-live="polite"></p>'
+    + '<div class="dialog-actions"><button type="submit" class="secondary">Скасувати</button><button type="button" class="primary" id="confirmCopyPlanning">Копіювати вибрані</button></div>'
+    + '</form>';
+  host.append(copyDialog);
+  const sourceMonth = copyDialog.querySelector('#copySourceMonth');
+  const sourceTab = copyDialog.querySelector('#copySourceTab');
+  const sourceRows = copyDialog.querySelector('#copySourceRows');
+  const copyMessage = copyDialog.querySelector('#copySourceFeedback');
+  const copyConfirm = copyDialog.querySelector('#confirmCopyPlanning');
+  const getSource = () => state.planning[sourceMonth.value + ':' + sourceTab.value];
+  const refreshCopySource = () => {
+    const sourceKey = sourceMonth.value + ':' + sourceTab.value;
+    const source = getSource();
+    sourceRows.innerHTML = '';
+    if (sourceKey === key) {
+      copyMessage.textContent = 'Оберіть інший місяць або розділ: копіювати план у самого себе не можна.';
+      copyConfirm.disabled = true; return;
+    }
+    if (!source || !Array.isArray(source.rows) || !source.rows.length) {
+      copyMessage.textContent = 'У вибраному джерелі немає збережених статей. Спочатку збережіть план у тому розділі.';
+      copyConfirm.disabled = true; return;
+    }
+    sourceRows.innerHTML = source.rows.map((r,i) =>
+      '<label class="planning-copy-item"><input type="checkbox" data-copy-index="' + i + '" checked>'
+      + '<span><strong>' + escape(r.name || 'Без назви') + '</strong><small>' + escape(r.category || 'Без категорії') + ' · ' + fmt(r.planned) + '</small></span></label>'
+    ).join('');
+    copyMessage.textContent = 'Джерело: ' + sourceTab.value + ', ' + sourceMonth.value + '. Знайдено ' + source.rows.length + ' статей.';
+    copyConfirm.disabled = false;
+  };
+  sourceMonth.addEventListener('change', refreshCopySource);
+  sourceTab.addEventListener('change', refreshCopySource);
   host.querySelectorAll('input[data-field="category"]').forEach(input => {
     const select = document.createElement('select');
     select.dataset.row = input.dataset.row; select.dataset.field = 'category';
@@ -199,6 +244,59 @@ window.renderPlanning = function(state, persist) {
     }
     if(['addPlanningRow','addPlanningRowMobile'].includes(e.target.id)){plan.rows.push({name:'',category:'',planned:0,actual:0,payer:'',note:''});commit();const field=host.querySelector(`input[data-row="${plan.rows.length-1}"][data-field="name"]`);field?.focus();field?.scrollIntoView({block:'center',behavior:'smooth'});}
     if(e.target.dataset.removePlan!==undefined){const index=Number(e.target.dataset.removePlan);if(plan.rows[index].percentSavings){alert('Ця стаття пов’язана з відсотком. Щоб прибрати план, встановіть 0%. Фактичний внесок збережеться.');return;}if(confirm('Видалити статтю плану?')){plan.rows.splice(index,1);commit();}}
+    if(e.target.id === 'copyPlanningFrom'){
+      refreshCopySource();
+      if (typeof copyDialog.showModal === 'function') copyDialog.showModal();
+      else copyDialog.setAttribute('open','');
+      sourceMonth.focus();
+      return;
+    }
+    if(e.target.id === 'confirmCopyPlanning'){
+      const sourceKey = sourceMonth.value + ':' + sourceTab.value;
+      const source = getSource();
+      if(sourceKey === key || !source || !Array.isArray(source.rows)){refreshCopySource();return;}
+      const indices = [...sourceRows.querySelectorAll('input[data-copy-index]:checked')].map(el => Number(el.dataset.copyIndex));
+      const copyBudget = copyDialog.querySelector('#copyBudgetFields').checked;
+      const selected = indices.filter(i => Number.isInteger(i) && i >= 0 && i < source.rows.length)
+        .map(i => source.rows[i]).filter(r => String(r.name || '').trim())
+        .map(r => {
+          const row = {
+            name:String(r.name || '').trim(),
+            category:String(r.category || '').trim(),
+            planned:Math.max(0,Number(r.planned)||0),
+            actual:0,payer:'',note:String(r.note || '')
+          };
+          if(copyBudget && r.percentSavings)row.percentSavings=true;
+          return row;
+        });
+      if(!selected.length){copyMessage.textContent='Позначте принаймні одну статтю з назвою.';return;}
+      const mode = copyDialog.querySelector('#copyMode').value;
+      if(mode === 'replace'){
+        if(plan.rows.some(r => Number(r.actual) > 0)){
+          copyMessage.textContent = 'Заміна заблокована: у поточному розділі є фактичні суми. Обери «Додати відсутні», щоб не втратити витрати.';
+          return;
+        }
+        if(plan.rows.length && !confirm('Замінити всі поточні статті вибраними? Це лише чернетка, факти не переносяться.'))return;
+        plan.rows = selected;
+      } else {
+        const identity = r => String(r.name || '').trim().toLocaleLowerCase('uk') + '|' + String(r.category || '').trim().toLocaleLowerCase('uk');
+        const existing = new Set(plan.rows.map(identity));
+        const added = selected.filter(r => {
+          const id = identity(r);
+          if(existing.has(id))return false;
+          existing.add(id);return true;
+        });
+        if(!added.length){copyMessage.textContent='Усі вибрані статті вже існують у цьому плані.';return;}
+        plan.rows.push(...added);
+      }
+      if(copyBudget){
+        plan.income = Math.max(0,Number(source.income)||0);
+        plan.reserve = Math.min(100,Math.max(0,Number(source.reserve)||0));
+      }
+      copyDialog.close();
+      commit();
+      return;
+    }
     if(e.target.id==='copyPlanning'){
       const date=new Date(`${month}-01T12:00:00`);date.setMonth(date.getMonth()-1);const prev=`${date.toLocaleDateString('sv-SE').slice(0,7)}:${tab}`;
       if(!state.planning[prev]){alert('У попередньому місяці немає плану цього розділу.');return;}
