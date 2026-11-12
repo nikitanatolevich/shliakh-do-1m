@@ -26,3 +26,20 @@
 }
 @media print{.planning-actions,.planning-tools,.mobile-row-tools{display:none!important}}
 .mobile-add-entry{display:none}
+
+/* Копіювання плану між розділами та місяцями */
+.planning-copy-dialog{width:min(640px,calc(100% - 24px));max-height:calc(100% - 40px);overflow:auto;padding:0;border:1px solid var(--line);border-radius:18px;background:var(--surface);color:var(--text);box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.planning-copy-dialog::backdrop{background:rgba(0,0,0,.55)}
+.planning-copy-body{display:grid;gap:15px;padding:20px}
+.planning-copy-body .dialog-head{margin:0}
+.planning-copy-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.planning-copy-grid>label{display:grid;gap:7px;font-size:.87rem;color:var(--muted);min-width:0}
+.planning-copy-grid input:not([type=checkbox]),.planning-copy-grid select{font:inherit;min-height:44px;min-width:0;width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--text)}
+.planning-copy-grid .planning-copy-include{display:flex;flex-direction:row;align-items:center;gap:10px;color:var(--text)}
+.planning-copy-include input,.planning-copy-item input{width:20px;height:20px;flex-shrink:0}
+.planning-copy-rows-title{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
+.planning-copy-rows{display:grid;gap:7px;max-height:300px;overflow:auto;padding-right:3px}
+.planning-copy-item{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:10px;cursor:pointer}
+.planning-copy-item span{display:grid;gap:3px;min-width:0}.planning-copy-item small{color:var(--muted)}
+.planning-copy-dialog .dialog-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+@media(max-width:540px){.planning-copy-grid{grid-template-columns:minmax(0,1fr)}.planning-copy-body{padding:14px}.planning-copy-dialog .dialog-actions button{flex:1;min-height:44px}}
