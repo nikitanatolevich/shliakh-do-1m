@@ -43,3 +43,11 @@
 .planning-copy-item span{display:grid;gap:3px;min-width:0}.planning-copy-item small{color:var(--muted)}
 .planning-copy-dialog .dialog-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
 @media(max-width:540px){.planning-copy-grid{grid-template-columns:minmax(0,1fr)}.planning-copy-body{padding:14px}.planning-copy-dialog .dialog-actions button{flex:1;min-height:44px}}
+
+/* Редагування бюджету: попередження про дефіцит, окрема дія для перерахунку */
+.planning-budget-tools{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin:12px 0 3px}
+.planning-budget-tools p{margin:0;color:var(--muted);font-size:.86rem;line-height:1.4;flex:1}
+.planning-budget-tools p.over-budget{color:var(--danger);font-weight:700}
+.planning-budget-tools button{white-space:normal;min-height:42px}
+#planningContent input[data-plan="income"]:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+@media(max-width:540px){.planning-budget-tools{align-items:stretch}.planning-budget-tools button{width:100%}}
